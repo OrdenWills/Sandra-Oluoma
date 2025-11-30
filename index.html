@@ -259,8 +259,7 @@
         .content-window {
             position: relative;
             overflow: hidden;
-            min-height: 500px;
-            padding: 20px;
+            padding: 10px 20px;
         }
 
         .slider-section {
@@ -279,7 +278,7 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            height: 100%;
+            min-height: 300px;
         }
 
         .slide-content {
@@ -291,6 +290,7 @@
             display: none;
             /* Individual slides hidden */
             width: 100%;
+            padding: 0;
         }
 
         .slide-item.active-slide {
@@ -302,13 +302,15 @@
             width: 100%;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            height: 450px;
-            object-fit: cover;
+            max-height: 70vh;
+            height: auto;
+            object-fit: contain;
         }
 
         /* Specific styling for testimonials to maintain aspect ratio */
         #testimonials .slide-item img {
-            height: 500px;
+            max-height: 70vh;
+            height: auto;
             object-fit: contain;
             background: rgba(255, 255, 255, 0.1);
         }
@@ -505,7 +507,8 @@
 
         <!-- REPLACE THIS IMAGE PATH -->
         <div class="profile-img-container glass-panel">
-            <img src="assets/profile-pic.png" alt="Sandra Chukwuemeka">
+            <img src="assets/profile-pic.png" alt="Sandra Chukwuemeka"
+                onerror="this.src='https://via.placeholder.com/300x300?text=Sandra'">
         </div>
 
         <h1>Sandra Chukwuemeka</h1>
