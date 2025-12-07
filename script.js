@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // --- TAB LOGIC ---
     const tabs = document.querySelectorAll('.tab-btn');
     const contents = document.querySelectorAll('.content-view');
@@ -24,12 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const body = document.body;
 
     // Check for saved preference
-    if(localStorage.getItem('theme') === 'light') {
+    if (localStorage.getItem('theme') === 'light') {
         enableLightMode();
     }
 
     themeBtn.addEventListener('click', () => {
-        if(body.classList.contains('light-mode')) {
+        if (body.classList.contains('light-mode')) {
             disableLightMode();
         } else {
             enableLightMode();
@@ -49,6 +49,17 @@ document.addEventListener('DOMContentLoaded', () => {
         themeIcon.classList.add('fa-sun'); // Change back to sun icon
         localStorage.setItem('theme', 'dark');
     }
+
+    // --- NAVBAR SCROLL EFFECT ---
+    const navbar = document.querySelector('.glass-nav');
+
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 50) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
+    });
 
     // --- SMOOTH SCROLL ---
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
