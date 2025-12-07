@@ -1,730 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sandra Chukwuemeka | LinkedIn Brand Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        :root {
-            /* Brand Colors extracted from screenshot */
-            --brand-gold: #c5a045;
-            --brand-dark-gold: #9e7f30;
-            --brand-bg-gradient: linear-gradient(135deg, #b88a28 0%, #d4af37 50%, #8b6c20 100%);
-            --glass-bg: rgba(255, 255, 255, 0.25);
-            --glass-border: rgba(255, 255, 255, 0.4);
-            --text-dark: #2a2a2a;
-            --text-light: #ffffff;
-
-            /* Responsive Typography - Mobile First */
-            --big-font-size: 2rem;
-            --h1-font-size: 1.5rem;
-            --h2-font-size: 1.25rem;
-            --h3-font-size: 1.125rem;
-            --normal-font-size: 0.938rem;
-            --small-font-size: 0.813rem;
-
-            /* Spacing */
-            --mb-0-5: 0.5rem;
-            --mb-1: 1rem;
-            --mb-1-5: 1.5rem;
-            --mb-2: 2rem;
-            --mb-2-5: 2.5rem;
-            --mb-3: 3rem;
-
-            /* Z-index */
-            --z-tooltip: 10;
-            --z-fixed: 100;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        body {
-            background: var(--brand-bg-gradient);
-            background-attachment: fixed;
-            /* Parallax effect */
-            color: var(--text-dark);
-            overflow-x: hidden;
-        }
-
-        /* --- Glassmorphism Utility Class --- */
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
-        }
-
-        .container {
-            max-width: 768px;
-            margin-left: var(--mb-1-5);
-            margin-right: var(--mb-1-5);
-        }
-
-        /* --- Header / Hero --- */
-        header {
-            min-height: 90vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            flex-direction: column;
-            padding-top: 50px;
-        }
-
-        .hero-badge {
-            background: rgba(0, 0, 0, 0.1);
-            padding: 10px 25px;
-            border-radius: 50px;
-            color: var(--text-light);
-            font-weight: 600;
-            margin-bottom: 20px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-
-        h1 {
-            font-size: var(--big-font-size);
-            color: #2e2e2e;
-            /* Dark text based on screenshot contrast */
-            margin-bottom: 10px;
-        }
-
-        .hero-subtitle {
-            font-size: 1.5rem;
-            color: #4a4a4a;
-            margin-bottom: 30px;
-            font-weight: 500;
-        }
-
-        .profile-img-container {
-            width: 280px;
-            height: 280px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 5px solid rgba(255, 255, 255, 0.4);
-            margin: 0 auto 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-
-        .profile-img-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .cta-btn {
-            padding: 15px 40px;
-            background: #2a2a2a;
-            color: white;
-            text-decoration: none;
-            border-radius: 30px;
-            font-weight: 600;
-            transition: transform 0.3s;
-            display: inline-block;
-        }
-
-        .cta-btn:hover {
-            transform: scale(1.05);
-            background: #000;
-        }
-
-        /* --- About Section --- */
-        .section-title-badge {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            padding: 15px 40px;
-            border-radius: 30px;
-            display: inline-block;
-            font-size: 2rem;
-            font-weight: 700;
-            color: #3e3e3e;
-            margin-bottom: 40px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        section {
-            padding: 2rem 0 4rem;
-            text-align: center;
-        }
-
-        .about-text {
-            max-width: 800px;
-            margin: 0 auto;
-            font-size: 1.1rem;
-            line-height: 1.8;
-            padding: 40px;
-            text-align: left;
-        }
-
-        /* --- Services --- */
-        .services-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-            margin-top: var(--mb-2);
-        }
-
-        .service-card {
-            padding: 40px 20px;
-            transition: transform 0.3s;
-            text-align: left;
-        }
-
-        .service-card:hover {
-            transform: translateY(-10px);
-            background: rgba(255, 255, 255, 0.4);
-        }
-
-        .service-card h3 {
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-            color: #222;
-        }
-
-        .service-card ul {
-            list-style: none;
-        }
-
-        .service-card li {
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-            position: relative;
-            padding-left: 20px;
-        }
-
-        .service-card li::before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            color: #000;
-            font-weight: bold;
-        }
-
-        /* --- Tools --- */
-        .tools-list {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-top: 20px;
-            word-spacing: 5px;
-        }
-
-        /* --- Tabbed Slider Section (Projects & Testimonials) --- */
-        .tab-container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .tabs {
-            display: flex;
-            flex-direction: row;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: var(--mb-2);
-            flex-wrap: wrap;
-        }
-
-        .tab-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 12px 16px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 30px;
-            color: #333;
-            transition: all 0.3s;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .tab-btn.active {
-            background: #2a2a2a;
-            color: white;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .content-window {
-            position: relative;
-            overflow: hidden;
-            padding: 10px 20px;
-        }
-
-        .slider-section {
-            display: none;
-            /* Hidden by default */
-            animation: fadeIn 0.5s ease;
-        }
-
-        .slider-section.active {
-            display: block;
-        }
-
-        /* Generic Slider Styles */
-        .slider-wrapper {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            min-height: 300px;
-        }
-
-        .slide-content {
-            width: 100%;
-            text-align: center;
-        }
-
-        .slide-item {
-            display: none;
-            /* Individual slides hidden */
-            width: 100%;
-            padding: 0;
-        }
-
-        .slide-item.active-slide {
-            display: block;
-            animation: slideIn 0.5s ease;
-        }
-
-        .slide-item img {
-            width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            max-height: 70vh;
-            height: auto;
-            object-fit: contain;
-        }
-
-        /* Specific styling for testimonials to maintain aspect ratio */
-        #testimonials .slide-item img {
-            max-height: 70vh;
-            height: auto;
-            object-fit: contain;
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-btn {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 10;
-            font-size: 1.2rem;
-        }
-
-        .prev {
-            left: 10px;
-        }
-
-        .next {
-            right: 10px;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
-        }
-
-        /* ==================== MEDIA QUERIES ==================== */
-
-        /* For medium devices (tablets) */
-        @media screen and (min-width: 568px) {
-            :root {
-                --big-font-size: 2.5rem;
-                --h1-font-size: 1.75rem;
-                --h2-font-size: 1.5rem;
-                --h3-font-size: 1.25rem;
-                --normal-font-size: 1rem;
-            }
-
-            .services-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 2rem;
-            }
-
-            .tabs {
-                gap: 1rem;
-            }
-
-            .hero-subtitle {
-                font-size: 1.75rem;
-            }
-        }
-
-        /* For large devices (desktop) */
-        @media screen and (min-width: 768px) {
-            :root {
-                --big-font-size: 3rem;
-                --h1-font-size: 2.25rem;
-                --h2-font-size: 1.75rem;
-                --h3-font-size: 1.5rem;
-                --normal-font-size: 1rem;
-            }
-
-            .container {
-                max-width: 1024px;
-                margin-left: auto;
-                margin-right: auto;
-            }
-
-            section {
-                padding: 6rem 0 2rem;
-            }
-
-            .services-grid {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 2rem;
-            }
-
-            .tabs {
-                gap: 2rem;
-            }
-
-            .tab-btn {
-                padding: 15px 35px;
-            }
-
-            header {
-                min-height: 100vh;
-            }
-
-            .profile-img-container {
-                width: 320px;
-                height: 320px;
-            }
-
-            .hero-subtitle {
-                font-size: 2rem;
-            }
-
-            .contact-info h2 {
-                font-size: 3.5rem;
-            }
-        }
-
-        /* Responsive adjustments for very small screens */
-        @media screen and (max-width: 350px) {
-            .container {
-                margin-left: var(--mb-1);
-                margin-right: var(--mb-1);
-            }
-
-            h1 {
-                font-size: 1.75rem;
-            }
-
-            .profile-img-container {
-                width: 200px;
-                height: 200px;
-            }
-
-            .tab-btn {
-                padding: 10px 16px;
-                font-size: 0.85rem;
-            }
-        }
-
-        /* --- Footer / Contact --- */
-        footer {
-            background: #1a1a1a;
-            color: var(--brand-gold);
-            padding: 60px 20px;
-            text-align: center;
-        }
-
-        .contact-info h2 {
-            font-size: 3rem;
-            color: white;
-            margin-bottom: 20px;
-        }
-
-        .contact-links a {
-            color: var(--brand-gold);
-            text-decoration: none;
-            font-size: 1.2rem;
-            display: block;
-            margin: 10px 0;
-        }
-
-        .contact-links a:hover {
-            color: white;
-            text-decoration: underline;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2.5rem;
-            }
-
-            .service-card {
-                padding: 20px;
-            }
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
-
 <body>
 
-    <!-- HERO SECTION -->
-    <header class="container">
-        <div class="hero-badge"> Brand Strategist</div>
-
-        <!-- REPLACE THIS IMAGE PATH -->
-        <div class="profile-img-container glass-panel">
-            <img src="assets/profile-pic.png" alt="Sandra Chukwuemeka"
-                onerror="this.src='https://via.placeholder.com/300x300?text=Sandra'">
+    <!-- Navigation -->
+    <nav class="glass-nav">
+        <div class="logo">Sandra<span>.Brand</span></div>
+        <ul class="nav-links">
+            <li><a href="#hero">Home</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#work-section">Portfolio</a></li>
+            <li><a href="https://www.coachli.co/sandrachukwuemeka/session/branding-management?id=7385" target="_blank" class="btn-main">Book a Call</a></li>
+            <!-- THEME TOGGLE BUTTON -->
+            <li><button id="theme-toggle" class="theme-btn"><i class="fa-solid fa-sun"></i></button></li>
+        </ul>
+        <div class="burger">
+            <div class="line1"></div>
+            <div class="line2"></div>
+            <div class="line3"></div>
         </div>
+    </nav>
 
-        <h1>Sandra Chukwuemeka</h1>
-        <p class="hero-subtitle">LinkedIn Brand Manager & Graphic Designer</p>
-
-        <a href="#contact" class="cta-btn">Let's Connect</a>
-    </header>
-
-    <!-- ABOUT SECTION -->
-    <section id="about">
-        <div class="container">
-            <div class="section-title-badge">About Me</div>
-            <div class="glass-panel about-text">
-                <p>
-                    <strong>Hey, I'm Sandra.</strong><br><br>
-                    I help professionals, founders, and creators build standout brands that actually feel like them.
-                    Whether it's on LinkedIn or across other digital spaces, I make sure your voice is clear, your
-                    visuals are on point, and your audience is paying attention.<br><br>
-                    I bring both <strong>strategy and heart</strong> into every project. Because good branding isn't
-                    just about looking nice — it's about being remembered. If you want to grow with intention and show
-                    up confidently online, you're in the right place.
-                </p>
+    <!-- Hero Section -->
+    <section id="hero" class="hero-section">
+        <div class="hero-content">
+            <div class="hero-text glass-card">
+                <span class="badge">LinkedIn Brand Manager</span>
+                <h1>I Turn Quiet Profiles Into <span class="highlight">Bold Personal Brands.</span></h1>
+                <p>Helping professionals build Profitable, Credible, and Seen profiles on LinkedIn through Brand Positioning, Profile Optimization, and Content Strategy.</p>
+                <div class="hero-btns">
+                    <a href="#work-section" class="btn-main">View My Work</a>
+                    <a href="https://www.linkedin.com/in/sandra-chukwuemeka-0a6079277/" target="_blank" class="btn-outline"><i class="fa-brands fa-linkedin"></i> LinkedIn</a>
+                </div>
             </div>
-        </div>
-    </section>
-
-    <!-- SERVICES SECTION -->
-    <section id="what-i-do">
-        <div class="container">
-            <div class="section-title-badge">What I Do</div>
-            <div class="services-grid">
-
-                <!-- Service 1 -->
-                <div class="service-card glass-panel">
-                    <h3>Brand Strategy</h3>
-                    <ul>
-                        <li>Personal brand positioning</li>
-                        <li>Messaging clarity</li>
-                        <li>Profile optimization</li>
-                    </ul>
-                </div>
-
-                <!-- Service 2 -->
-                <div class="service-card glass-panel">
-                    <h3>Graphic Design</h3>
-                    <ul>
-                        <li>Scroll-stopping banners</li>
-                        <li>Branded carousels and posts</li>
-                        <li>Visual storytelling that connects</li>
-                    </ul>
-                </div>
-
-                <!-- Service 3 -->
-                <div class="service-card glass-panel">
-                    <h3>Content Writing & Social Media</h3>
-                    <ul>
-                        <li>Growth strategy</li>
-                        <li>Content planning & SEO</li>
-                        <li>Copywriting</li>
-                        <li>Community engagement</li>
-                    </ul>
+            <div class="hero-image">
+                <!-- REPLACE IMAGE: assets/sandra-hero.png -->
+                <div class="img-wrapper glass-card">
+                    <img src="assets/profile-pic.png" alt="Sandra Chukwuemeka" >
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- TOOLS SECTION -->
-    <section>
-        <div class="container glass-panel" style="padding: 20px;">
-            <h3>Tools I Use:</h3>
-            <p class="tools-list">Canva • Adobe Express • Trello • Notion • Google Workspace • MS Office</p>
+    <!-- About / Stats Section -->
+    <section id="about" class="stats-section">
+        <div class="stat-container glass-card">
+            <div class="stat-box">
+                <h3>145%</h3>
+                <p>Visibility Increase</p>
+            </div>
+            <div class="stat-box">
+                <h3>120%</h3>
+                <p>Engagement Growth</p>
+            </div>
+            <div class="stat-box">
+                <h3>+35%</h3>
+                <p>Follower Growth</p>
+            </div>
+            <div class="stat-box">
+                <h3>3+ Yrs</h3>
+                <p>Experience</p>
+            </div>
         </div>
     </section>
 
-    <!-- TABBED SLIDER SECTION (PROJECTS & TESTIMONIALS) -->
-    <section id="showcase">
+    <!-- Sliding Section (Projects & Testimonials) -->
+    <section id="work-section" class="work-section">
         <div class="container">
-            <div class="section-title-badge">My Work & Clients</div>
-
-            <div class="tab-container">
-                <!-- Tabs -->
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="openTab('projects')">My Projects</button>
-                    <button class="tab-btn" onclick="openTab('testimonials')">What Clients Say</button>
+            <div class="section-header">
+                <h2>My Impact</h2>
+                <div class="tabs glass-card">
+                    <button class="tab-btn active" data-target="projects">Projects</button>
+                    <button class="tab-btn" data-target="testimonials">Testimonials</button>
                 </div>
+            </div>
 
-                <!-- Glass Window -->
-                <div class="glass-panel content-window">
-
-                    <!-- PROJECTS SLIDER -->
-                    <div id="projects" class="slider-section active">
-                        <div class="slider-wrapper">
-                            <button class="nav-btn prev" onclick="changeSlide('projects', -1)">&#10094;</button>
-
-                            <div class="slide-content">
-                                <!-- Project Images: REPLACE src with your assets -->
-                                <div class="slide-item active-slide">
-                                    <img src="assets/project1.png" alt="LinkedIn Banner Project">
-                                    <p>LinkedIn Brand Makeovers</p>
-                                </div>
-                                <div class="slide-item">
-                                    <img src="assets/project2.png" alt="Carousel Project">
-                                    <p>Graphics That Get Saved & Shared</p>
-                                </div>
-                                <div class="slide-item">
-                                    <img src="assets/project3.png" alt="Analytics">
-                                    <p>Content That Connects</p>
-                                </div>
-                            </div>
-
-                            <button class="nav-btn next" onclick="changeSlide('projects', 1)">&#10095;</button>
+            <div class="slider-window">
+                
+                <!-- Projects View -->
+                <div id="projects" class="content-view active">
+                    <!-- Project 1 -->
+                    <div class="card glass-card">
+                        <div class="card-img">
+                            <img src="assets/project1.jpg" alt="Nerbee Brand Management" >
+                        </div>
+                        <div class="card-info">
+                            <h3>Brand Manager @ Nerbee</h3>
+                            <p>Led brand messaging revamp and visual storytelling. Aligned team content with brand goals and managed campaigns that built trust.</p>
+                            <span class="tag">Brand Strategy</span>
                         </div>
                     </div>
 
-                    <!-- TESTIMONIALS SLIDER -->
-                    <div id="testimonials" class="slider-section">
-                        <div class="slider-wrapper">
-                            <button class="nav-btn prev" onclick="changeSlide('testimonials', -1)">&#10094;</button>
-
-                            <div class="slide-content">
-                                <!-- Testimonial Images: REPLACE src with your assets -->
-                                <div class="slide-item active-slide">
-                                    <img src="assets/testimonial1.png" alt="Review from Zubeita">
-                                </div>
-                                <div class="slide-item">
-                                    <img src="assets/testimonial2.png" alt="Review from Mmesoma">
-                                </div>
-                                <div class="slide-item">
-                                    <img src="assets/testimonial3.png" alt="Review from Ekwe">
-                                </div>
-                            </div>
-
-                            <button class="nav-btn next" onclick="changeSlide('testimonials', 1)">&#10095;</button>
+                    <!-- Project 2 -->
+                    <div class="card glass-card">
+                        <div class="card-img">
+                            <img src="assets/project2.jpg" alt="Rinotec Digital Aid" >
+                        </div>
+                        <div class="card-info">
+                            <h3>LinkedIn Brand Manager @ Rinotec</h3>
+                            <p>Designed TOFU–MOFU–BOFU content systems. Increased visibility by 145% and engagement by 120% within 3 months.</p>
+                            <span class="tag">Profile Optimization</span>
                         </div>
                     </div>
 
+                    <!-- Project 3 -->
+                    <div class="card glass-card">
+                        <div class="card-img">
+                            <img src="assets/project3.jpg" alt="Executive Branding" >
+                        </div>
+                        <div class="card-info">
+                            <h3>Executive Personal Branding</h3>
+                            <p>Collaborated with C-suite leaders to align online messaging with core brand identity and hiring goals.</p>
+                            <span class="tag">Content Strategy</span>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Testimonials View -->
+                <div id="testimonials" class="content-view">
+                    <!-- Testimonial 1 -->
+                    <div class="card glass-card testimonial-card">
+                        <div class="client-img">
+                            <img src="assets/client1.jpg" alt="Omoya Renike">
+                        </div>
+                        <div class="card-info">
+                            <div class="stars">★★★★★</div>
+                            <p>"She actually sat with me virtually, optimized my profile, and gave me gems I didn’t even know I needed. It’s rare to meet people who genuinely pour into others."</p>
+                            <h4>Omoya Renike</h4>
+                            <small>Administrative Virtual Assistant</small>
+                        </div>
+                    </div>
+
+                    <!-- Testimonial 2 -->
+                    <div class="card glass-card testimonial-card">
+                        <div class="client-img">
+                            <img src="assets/client2.jpg" alt="Titilayo Ogunlalu">
+                        </div>
+                        <div class="card-info">
+                            <div class="stars">★★★★★</div>
+                            <p>"From the very first conversation, Sandra listened carefully... She doesn’t just optimize your profile, she helps you see yourself in a new light and confidently show up on LinkedIn."</p>
+                            <h4>Titilayo Ogunlalu</h4>
+                            <small>Nurse Assistant & V.A.</small>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </section>
 
-    <!-- FOOTER / CONTACT -->
-    <footer id="contact">
-        <div class="container">
-            <p style="text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;">Ready to work together?</p>
-            <h2>Let's Connect</h2>
-
-            <div class="contact-links">
-                <a href="mailto:sclems600@gmail.com">Email: sclems600@gmail.com</a>
-                <!-- Replace with actual Link -->
-                <a href="https://linkedin.com/in/sandra-chukwuemeka-0a6079277" target="_blank">
-                    LinkedIn: linkedin.com/in/sandra-chukwuemeka
-                </a>
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content glass-card">
+            <h2>Ready to stand out?</h2>
+            <p>Let's build a profitable and credible profile today.</p>
+            <a href="https://www.coachli.co/sandrachukwuemeka/session/branding-management?id=7385" class="btn-main">Book FREE Session</a>
+            <div class="socials">
+                <a href="https://www.linkedin.com/in/sandra-chukwuemeka-0a6079277/"><i class="fa-brands fa-linkedin"></i></a>
+                <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                <a href="#"><i class="fa-brands fa-twitter"></i></a>
             </div>
-
-            <div style="margin-top: 40px; font-size: 0.9rem; opacity: 0.7;">
-                &copy; 2025 Sandra Chukwuemeka. Let's make your brand bold.
-            </div>
+            <p class="copyright">© 2025 Sandra Chukwuemeka. All Rights Reserved.</p>
         </div>
     </footer>
 
-    <!-- JAVASCRIPT LOGIC -->
-    <script>
-        // 1. Logic for Switching Tabs
-        function openTab(tabName) {
-            // Hide all sections
-            var sections = document.getElementsByClassName("slider-section");
-            for (var i = 0; i < sections.length; i++) {
-                sections[i].classList.remove("active");
-            }
-
-            // Remove active class from buttons
-            var buttons = document.getElementsByClassName("tab-btn");
-            for (var i = 0; i < buttons.length; i++) {
-                buttons[i].classList.remove("active");
-            }
-
-            // Show current tab and activate button
-            document.getElementById(tabName).classList.add("active");
-
-            // Find the button that was clicked (using event bubbling or matching text logic, simpler here is finding by index or just adding active to event target)
-            event.currentTarget.classList.add("active");
-        }
-
-        // 2. Logic for Sliders (Carousel)
-        // We track the index for each slider independently
-        let slideIndices = {
-            'projects': 0,
-            'testimonials': 0
-        };
-
-        function changeSlide(sliderId, n) {
-            // Get the container for the specific slider (projects or testimonials)
-            let container = document.getElementById(sliderId);
-            let slides = container.getElementsByClassName("slide-item");
-
-            // Calculate new index
-            slideIndices[sliderId] += n;
-
-            // Loop logic (if end, go to start. if start, go to end)
-            if (slideIndices[sliderId] >= slides.length) {
-                slideIndices[sliderId] = 0;
-            }
-            if (slideIndices[sliderId] < 0) {
-                slideIndices[sliderId] = slides.length - 1;
-            }
-
-            // Hide all slides in this container
-            for (let i = 0; i < slides.length; i++) {
-                slides[i].classList.remove("active-slide");
-            }
-
-            // Show the new slide
-            slides[slideIndices[sliderId]].classList.add("active-slide");
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
-
 </html>
