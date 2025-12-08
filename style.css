@@ -615,4 +615,9 @@ footer {
     .hero-text h1 {
         font-size: 2rem;
     }
+
+    .img-wrapper {
+        width: 280px;
+        height: 280px;
+    }
 }
