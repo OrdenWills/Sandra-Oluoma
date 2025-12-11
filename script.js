@@ -54,11 +54,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const navbar = document.querySelector('.glass-nav');
 
     window.addEventListener('scroll', () => {
+        // Navbar glass effect
         if (window.scrollY > 50) {
             navbar.classList.add('scrolled');
         } else {
             navbar.classList.remove('scrolled');
         }
+
+        // Active link highlighting
+        let current = '';
+        const sections = document.querySelectorAll('section');
+
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.clientHeight;
+            if (scrollY >= (sectionTop - 200)) { // Offset for header/visual comfort
+                current = section.getAttribute('id');
+            }
+        });
+
+        document.querySelectorAll('.nav-links li a').forEach(a => {
+            a.classList.remove('active');
+            if (a.getAttribute('href').includes(current)) {
+                a.classList.add('active');
+            }
+        });
     });
 
     // --- SMOOTH SCROLL ---

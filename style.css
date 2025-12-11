@@ -235,7 +235,8 @@ a {
     transition: color 0.3s;
 }
 
-.nav-links li a:hover {
+.nav-links li a:hover,
+.nav-links li a.active {
     color: var(--primary-color);
 }
 
