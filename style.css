@@ -588,16 +588,116 @@ footer {
     color: var(--text-muted);
 }
 
+/* --- Mobile Specific Styles --- */
+.mobile-controls {
+    display: none;
+    gap: 1rem;
+    align-items: center;
+}
+
+.mobile-menu-modal {
+    position: fixed;
+    bottom: -100%;
+    /* Hidden by default */
+    left: 0;
+    width: 100%;
+    padding: 2rem 1rem 7rem 1rem;
+    /* Extra bottom padding for navbar */
+    z-index: 999;
+    /* Behind navbar */
+    border-radius: 20px 20px 0 0;
+    transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--nav-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--glass-border);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-menu-modal.active {
+    bottom: 0;
+}
+
+.mobile-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    padding: 1.5rem 0.5rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.mobile-nav-item i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    transition: transform 0.3s ease;
+}
+
+.mobile-nav-item span {
+    font-size: 0.8rem;
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.mobile-nav-item:hover,
+.mobile-nav-item:active {
+    background: var(--primary-dark);
+    border-color: var(--primary-color);
+    transform: translateY(-5px);
+}
+
+.mobile-nav-item:hover i {
+    color: #fff;
+    transform: scale(1.1);
+}
+
+.mobile-nav-item:hover span {
+    color: #fff;
+}
+
 /* --- Responsive --- */
 @media screen and (max-width: 768px) {
+    .glass-nav {
+        top: auto;
+        bottom: 0;
+        border-bottom: none;
+        border-top: 1px solid var(--glass-border);
+        background: var(--nav-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        padding: 0.8rem 5%;
+    }
+
     .nav-links {
         display: none;
     }
 
-    /* Mobile menu logic omitted for brevity */
+    .mobile-controls {
+        display: flex;
+    }
+
+    /* Adjust main content padding to account for bottom navbar */
+    body {
+        padding-bottom: 80px;
+    }
+
     .hero-content {
         flex-direction: column-reverse;
         text-align: center;
+        padding-bottom: 2rem;
     }
 
     .hero-text {
