@@ -133,10 +133,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Highlight desktop nav links
         document.querySelectorAll('.nav-links li a').forEach(a => {
             a.classList.remove('active');
             if (a.getAttribute('href').includes(current)) {
                 a.classList.add('active');
+            }
+        });
+
+        // Highlight mobile nav items
+        document.querySelectorAll('.mobile-nav-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('href').includes(current)) {
+                item.classList.add('active');
             }
         });
     });
