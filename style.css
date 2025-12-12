@@ -707,6 +707,10 @@ footer {
         padding-bottom: 80px;
     }
 
+    .hero-section {
+        padding-top: 3rem;
+    }
+
     .hero-content {
         flex-direction: column-reverse;
         text-align: center;
