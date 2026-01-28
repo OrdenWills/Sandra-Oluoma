@@ -112,23 +112,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- NAVBAR SCROLL EFFECT ---
     const navbar = document.querySelector('.glass-nav');
+    const aboutSection = document.getElementById('about');
 
     window.addEventListener('scroll', () => {
-        // Navbar glass effect
-        if (window.scrollY > 50) {
+        const scrollY = window.scrollY;
+
+        // 1. Navbar glass effect (Existing logic)
+        if (scrollY > 50) {
             navbar.classList.add('scrolled');
         } else {
             navbar.classList.remove('scrolled');
         }
 
-        // Active link highlighting
+        // 2. HERO IMAGE TRANSITION LOGIC (New Logic)
+        // We calculate when the About section is near the middle/top of viewport
+        // offsetTop - 200 gives us a buffer so it happens just as About text highlights
+        if (aboutSection && scrollY >= (aboutSection.offsetTop - 300)) {
+            navbar.classList.add('reveal-profile');
+        } else {
+            navbar.classList.remove('reveal-profile');
+        }
+
+        // 3. Active link highlighting (Existing Logic)
         let current = '';
         const sections = document.querySelectorAll('section');
 
         sections.forEach(section => {
             const sectionTop = section.offsetTop;
             const sectionHeight = section.clientHeight;
-            if (scrollY >= (sectionTop - 200)) { // Offset for header/visual comfort
+            // -200 offset helps highlight the link slightly before the section hits top
+            if (scrollY >= (sectionTop - 200)) { 
                 current = section.getAttribute('id');
             }
         });
@@ -149,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-
+    
     // --- SMOOTH SCROLL ---
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {

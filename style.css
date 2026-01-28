@@ -812,3 +812,56 @@ footer {
         margin-bottom: 1rem;
     }
 }
+
+/* --- NAV PROFILE IMAGE TRANSITION --- */
+
+/* Wrapper to align Logo and Image */
+.logo-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0; /* Starts at 0, gap effectively handled by padding/margin in transition */
+}
+
+/* The Container for the Mini Image */
+.nav-mini-profile {
+    width: 0; /* Hidden by default */
+    opacity: 0;
+    transform: translateX(-20px) scale(0.5); /* Start pushed back and small */
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* Bouncy smooth transition */
+    margin-right: 0;
+}
+
+/* The Image itself */
+.nav-mini-profile img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-color);
+    /* Prevent image squishing during transition */
+    min-width: 40px; 
+}
+
+/* --- ACTIVE STATE (Triggered by JS) --- */
+.glass-nav.reveal-profile .nav-mini-profile {
+    width: 45px; /* Expands to show image */
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    margin-right: 10px; /* Add spacing between image and text */
+}
+
+/* Mobile Adjustments */
+@media screen and (max-width: 768px) {
+    .glass-nav.reveal-profile .nav-mini-profile {
+        /* On mobile bottom nav, we ensure it looks good next to logo */
+        width: 40px; 
+        margin-right: 8px;
+    }
+    
+    .nav-mini-profile img {
+        width: 35px;
+        height: 35px;
+        min-width: 35px;
+    }
+}
