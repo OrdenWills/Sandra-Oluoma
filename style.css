@@ -92,13 +92,15 @@ a {
     top: 0;
     left: 0;
     right: 0;
-    height: 1px;
+    height: 2px;
     background: linear-gradient(90deg,
             transparent,
-            rgba(255, 255, 255, 0.3),
+            var(--primary-color),
             transparent);
     animation: shimmer 3s ease-in-out infinite;
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
 }
+
 
 @keyframes shimmer {
 
