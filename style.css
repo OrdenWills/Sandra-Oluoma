@@ -865,3 +865,75 @@ footer {
         min-width: 35px;
     }
 }
+/* --- 2. YELLOW SWIRL HOVER EFFECT --- */
+
+/* 
+   We use CSS @property to animate the gradient angle.
+   This creates the smooth "snake" movement.
+*/
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.glass-card {
+    position: relative;
+    /* Ensure the pseudo-element doesn't block clicks on buttons/links inside */
+    z-index: 1; 
+}
+
+/* The Swirl Border */
+.glass-card::after {
+    content: '';
+    position: absolute;
+    inset: 0; /* Cover the whole card */
+    padding: 2px; /* This determines the thickness of the yellow swirl */
+    border-radius: inherit; /* Follows the card's rounded corners */
+    
+    /* The Magic: Conic Gradient with a hard yellow stop and transparency */
+    background: conic-gradient(
+        from var(--angle), 
+        transparent 0%, 
+        transparent 70%, 
+        var(--primary-color) 85%, 
+        var(--primary-color) 100%
+    );
+    
+    /* Masking: This cuts out the center so the border sits ON TOP of the glass
+       without hiding the glass background or content */
+    -webkit-mask: 
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    
+    /* Animation */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    animation: spin 3s linear infinite;
+    pointer-events: none; /* Allows clicking through the border */
+    z-index: 2;
+}
+
+/* Show swirl on hover */
+.glass-card:hover::after {
+    opacity: 1;
+}
+
+@keyframes spin {
+    0% {
+        --angle: 0deg;
+    }
+    100% {
+        --angle: 360deg;
+    }
+}
+
+/* Fallback for browsers that don't support @property (like older Safari) */
+@supports not (background: paint(something)) {
+    .glass-card:hover {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+    }
+}
