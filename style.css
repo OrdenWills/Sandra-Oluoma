@@ -98,7 +98,7 @@ a {
             var(--primary-color),
             transparent);
     animation: shimmer 3s ease-in-out infinite;
-    /* box-shadow: 0 0 15px rgba(212, 175, 55, 0.5); */
+    box-shadow: 0 0 1px rgba(212, 175, 55, 0.5);
 }
 
 
