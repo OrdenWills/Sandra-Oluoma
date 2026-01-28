@@ -92,13 +92,13 @@ a {
     top: 0;
     left: 0;
     right: 0;
-    height: 2px;
+    height: 1px;
     background: linear-gradient(90deg,
             transparent,
             var(--primary-color),
             transparent);
     animation: shimmer 3s ease-in-out infinite;
-    box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+    /* box-shadow: 0 0 15px rgba(212, 175, 55, 0.5); */
 }
 
 
