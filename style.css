@@ -1069,7 +1069,13 @@ footer {
     }
 
     .hero-btns {
-        justify-content: center;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .hero-btns a {
+        width: 100%;
+        text-align: center;
     }
 
     .hero-text h1 {
