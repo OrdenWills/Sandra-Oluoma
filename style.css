@@ -159,7 +159,7 @@ a {
 }
 
 .btn-outline {
-    border: 2px solid var(--primary-color);
+    border: 2px solid transparent;
     color: var(--primary-color);
     padding: 8px 25px;
     border-radius: 30px;
