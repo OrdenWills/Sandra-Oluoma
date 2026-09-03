@@ -899,78 +899,45 @@ a {
     line-height: 1.6;
 }
 
-/* --- Final CTA Section --- */
-.final-cta-section {
-    padding: 4rem 5%;
+/* --- Fixed Footer --- */
+.fixed-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 998;
+    background: var(--nav-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--glass-border);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
+    padding: 1rem 5%;
 }
 
-.final-cta {
-    max-width: 800px;
+.footer-cta-content {
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 4rem 3rem;
-    text-align: center;
-}
-
-.final-cta h2 {
-    font-size: 2.2rem;
-    margin-bottom: 1rem;
-}
-
-.final-cta p {
-    color: var(--text-muted);
-    margin-bottom: 2rem;
-    font-size: 1.1rem;
-}
-
-/* --- Footer --- */
-footer {
-    padding: 4rem 5%;
-    text-align: center;
-}
-
-.footer-content {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 3rem;
-}
-
-.footer-content h2 {
-    margin-bottom: 0.5rem;
-}
-
-.footer-title {
-    color: var(--primary-color);
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.footer-tagline {
-    color: var(--text-muted);
-    margin-bottom: 2rem;
-}
-
-.socials {
-    margin-top: 2rem;
     display: flex;
-    justify-content: center;
-    gap: 1.5rem;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
 }
 
-.socials a {
-    font-size: 1.5rem;
-    transition: 0.3s;
+.footer-cta-text h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
     color: var(--text-main);
 }
 
-.socials a:hover {
-    color: var(--primary-color);
+.footer-cta-text p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
 }
 
-.copyright {
-    font-size: 0.8rem;
-    margin-top: 2rem;
-    opacity: 0.6;
-    color: var(--text-muted);
+.footer-cta-content .btn-main {
+    white-space: nowrap;
+    padding: 8px 20px;
+    font-size: 0.85rem;
 }
 
 /* --- Mobile Specific Styles --- */
@@ -1085,7 +1052,7 @@ footer {
     }
 
     body {
-        padding-bottom: 80px;
+        padding-bottom: 140px;
     }
 
     .hero-section {
@@ -1131,12 +1098,21 @@ footer {
         font-size: 0.9rem;
     }
 
-    .final-cta {
-        padding: 3rem 1.5rem;
+    .fixed-footer {
+        padding: 0.8rem 5%;
     }
 
-    .final-cta h2 {
-        font-size: 1.6rem;
+    .footer-cta-content {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .footer-cta-text h3 {
+        font-size: 0.95rem;
+    }
+
+    .footer-cta-text p {
+        font-size: 0.75rem;
     }
 }
 
