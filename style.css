@@ -351,6 +351,10 @@ a {
 
 /* --- Problem Section --- */
 .problem-section {
+    min-height: 50vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 4rem 5%;
 }
 
@@ -362,6 +366,8 @@ a {
 .problem-content {
     padding: 3rem;
     text-align: center;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
 .problem-content h2 {
@@ -378,9 +384,8 @@ a {
 
 .pain-points {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
-    margin-bottom: 2.5rem;
 }
 
 .pain-point {
@@ -402,22 +407,33 @@ a {
     font-size: 0.95rem;
 }
 
-.solution-text {
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-}
-
-.solution-detail {
-    color: var(--text-muted);
-    max-width: 700px;
-    margin: 0 auto;
-}
-
 /* --- Services Section --- */
 .services-section {
     padding: 4rem 5%;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.services-intro {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.services-intro p {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.services-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+    max-width: 600px;
+    margin: 0 auto;
 }
 
 .section-header {
@@ -440,7 +456,7 @@ a {
 
 .services-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 2rem;
 }
 
@@ -459,35 +475,13 @@ a {
     font-size: 3rem;
     font-weight: 700;
     color: var(--primary-color);
-    opacity: 0.3;
     font-family: 'Montserrat', sans-serif;
-}
-
-.service-icon {
-    width: 60px;
-    height: 60px;
-    margin: 1rem auto;
-    background: rgba(212, 175, 55, 0.15);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.service-icon i {
-    font-size: 1.5rem;
-    color: var(--primary-color);
+    margin-bottom: 1rem;
 }
 
 .service-card h3 {
-    margin-bottom: 0.5rem;
-    font-size: 1.2rem;
-}
-
-.service-card p {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    line-height: 1.5;
+    font-size: 1.1rem;
+    color: var(--text-main);
 }
 
 /* --- Pricing Section --- */
@@ -1091,8 +1085,20 @@ footer {
         font-size: 1.6rem;
     }
 
+    .pain-points {
+        grid-template-columns: 1fr;
+    }
+
     .section-header h2 {
         font-size: 1.8rem;
+    }
+
+    .services-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .services-intro p {
+        font-size: 1.2rem;
     }
 
     .before-after {
