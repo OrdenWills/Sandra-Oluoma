@@ -2,34 +2,34 @@
     /* --- Brand Colors (Constant) --- */
     --primary-color: #d58d19;
     /* Golden Yellow */
-    --primary-dark: #dcc473;
-    /* Grey Yellow */
+    --primary-dark: #302110;
+    /* Dark Brown (used for buttons) */
     --secondary-brown: #302110;
     /* Dark Brown */
 
     /* --- Default Dark Mode Variables --- */
-    --bg-color: #302110;
-    /* Dark Brown Background */
-    --text-main: #FFFFFF;
-    --text-muted: #dcc473;
+    --bg-color: #fff4d9;
+    /* Light Cream Background */
+    --text-main: #302110;
+    --text-muted: #8a7a5a;
 
-    /* Glass Effects (Dark) */
-    --glass-bg: rgba(220, 196, 115, 0.05);
-    --glass-border: rgba(220, 196, 115, 0.15);
+    /* Glass Effects */
+    --glass-bg: rgba(255, 255, 255, 0.6);
+    --glass-border: rgba(48, 33, 16, 0.12);
     --glass-blur: blur(15px);
-    --nav-bg: rgba(48, 33, 16, 0.6);
+    --nav-bg: rgba(255, 244, 217, 0.6);
 
-    /* Gradient Overlay (Golden Yellow on Dark Brown) */
+    /* Gradient Overlay (Golden Yellow on Cream) */
     --bg-gradient:
-        radial-gradient(circle at 10% 20%, rgba(213, 141, 25, 0.15) 0%, transparent 20%),
-        radial-gradient(circle at 90% 80%, rgba(220, 196, 115, 0.1) 0%, transparent 20%);
+        radial-gradient(circle at 10% 20%, rgba(213, 141, 25, 0.12) 0%, transparent 20%),
+        radial-gradient(circle at 90% 80%, rgba(213, 141, 25, 0.08) 0%, transparent 20%);
 }
 
 /* --- LIGHT MODE OVERRIDES --- */
 body.light-mode {
-    --bg-color: #F8F9FA;
+    --bg-color: #FFEEF7;
     --text-main: #302110;
-    --text-muted: #555555;
+    --text-muted: #8a7a5a;
 
     /* Glass Effects (Light - "Frosted" look) */
     --glass-bg: rgba(255, 255, 255, 0.65);
@@ -39,7 +39,7 @@ body.light-mode {
     /* Gradient Overlay (Gold on White) */
     --bg-gradient:
         radial-gradient(circle at 10% 20%, rgba(213, 141, 25, 0.2) 0%, transparent 25%),
-        radial-gradient(circle at 90% 80%, rgba(220, 196, 115, 0.2) 0%, transparent 25%);
+        radial-gradient(circle at 90% 80%, rgba(213, 141, 25, 0.2) 0%, transparent 25%);
 }
 
 * {
@@ -149,7 +149,7 @@ a {
     font-weight: 600;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow:
-        0 4px 12px 0 rgba(220, 196, 115, 0.3),
+        0 4px 12px 0 rgba(48, 33, 16, 0.3),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -178,7 +178,7 @@ a {
     border-color: var(--primary-dark);
     transform: translateY(-2px) scale(1.02);
     box-shadow:
-        0 6px 16px 0 rgba(220, 196, 115, 0.3),
+        0 6px 16px 0 rgba(48, 33, 16, 0.3),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -207,7 +207,7 @@ a {
     border-color: var(--primary-dark);
     transform: rotate(180deg) scale(1.1);
     box-shadow:
-        0 4px 16px 0 rgba(220, 196, 115, 0.3),
+        0 4px 16px 0 rgba(48, 33, 16, 0.3),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
 }
 
