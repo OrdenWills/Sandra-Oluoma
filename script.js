@@ -1,25 +1,57 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- TAB LOGIC ---
-    const tabs = document.querySelectorAll('.tab-btn');
-    const contents = document.querySelectorAll('.content-view');
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-
-            const target = tab.getAttribute('data-target');
-            contents.forEach(content => {
-                content.classList.remove('active');
+    // --- FAQ ACCORDION LOGIC ---
+    const faqItems = document.querySelectorAll('.faq-item');
+    
+    faqItems.forEach(item => {
+        const question = item.querySelector('.faq-question');
+        
+        question.addEventListener('click', () => {
+            const isActive = item.classList.contains('active');
+            
+            // Close all FAQ items
+            faqItems.forEach(faq => {
+                faq.classList.remove('active');
             });
-
-            document.getElementById(target).classList.add('active');
+            
+            // Toggle the clicked item
+            if (!isActive) {
+                item.classList.add('active');
+            }
         });
     });
 
+    // --- WAITLIST FORM LOGIC ---
+    const waitlistForm = document.getElementById('waitlist-form');
+    
+    if (waitlistForm) {
+        waitlistForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            
+            // Simple validation
+            if (name && email) {
+                // Show success message
+                const btn = waitlistForm.querySelector('button');
+                const originalText = btn.textContent;
+                btn.textContent = 'YOU\'RE ON THE LIST!';
+                btn.style.backgroundColor = '#28a745';
+                
+                // Reset form
+                waitlistForm.reset();
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.backgroundColor = '';
+                }, 3000);
+            }
+        });
+    }
+
     // --- LIGHT/DARK MODE LOGIC ---
-    // Select all specific theme toggle buttons (excluding other buttons that might use the class for styling)
     const themeBtns = document.querySelectorAll('.theme-btn:not(#mobile-menu-btn)');
     const body = document.body;
 
@@ -41,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function enableLightMode() {
         body.classList.add('light-mode');
-        // Update all icons
         themeBtns.forEach(btn => {
             const icon = btn.querySelector('i');
             icon.classList.remove('fa-sun');
@@ -52,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function disableLightMode() {
         body.classList.remove('light-mode');
-        // Update all icons
         themeBtns.forEach(btn => {
             const icon = btn.querySelector('i');
             icon.classList.remove('fa-moon');
@@ -69,10 +99,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mobileMenuBtn && mobileModal) {
         // Toggle Modal
         mobileMenuBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent immediate closing if clicking body
+            e.stopPropagation();
             mobileModal.classList.toggle('active');
 
-            // Optional: Toggle icon
             const icon = mobileMenuBtn.querySelector('i');
             if (mobileModal.classList.contains('active')) {
                 icon.classList.remove('fa-grip');
@@ -87,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileNavItems.forEach(item => {
             item.addEventListener('click', () => {
                 mobileModal.classList.remove('active');
-                // Reset icon
                 const icon = mobileMenuBtn.querySelector('i');
                 icon.classList.remove('fa-xmark');
                 icon.classList.add('fa-grip');
@@ -102,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 !mobileMenuBtn.contains(e.target)) {
 
                 mobileModal.classList.remove('active');
-                // Reset icon
                 const icon = mobileMenuBtn.querySelector('i');
                 icon.classList.remove('fa-xmark');
                 icon.classList.add('fa-grip');
@@ -117,30 +144,27 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('scroll', () => {
         const scrollY = window.scrollY;
 
-        // 1. Navbar glass effect (Existing logic)
+        // Navbar glass effect
         if (scrollY > 50) {
             navbar.classList.add('scrolled');
         } else {
             navbar.classList.remove('scrolled');
         }
 
-        // 2. HERO IMAGE TRANSITION LOGIC (New Logic)
-        // We calculate when the About section is near the middle/top of viewport
-        // offsetTop - 200 gives us a buffer so it happens just as About text highlights
+        // HERO IMAGE TRANSITION LOGIC
         if (aboutSection && scrollY >= (aboutSection.offsetTop - 300)) {
             navbar.classList.add('reveal-profile');
         } else {
             navbar.classList.remove('reveal-profile');
         }
 
-        // 3. Active link highlighting (Existing Logic)
+        // Active link highlighting
         let current = '';
         const sections = document.querySelectorAll('section');
 
         sections.forEach(section => {
             const sectionTop = section.offsetTop;
             const sectionHeight = section.clientHeight;
-            // -200 offset helps highlight the link slightly before the section hits top
             if (scrollY >= (sectionTop - 200)) { 
                 current = section.getAttribute('id');
             }
