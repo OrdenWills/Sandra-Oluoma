@@ -517,10 +517,7 @@ a {
 }
 
 .best-value-badge {
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
+    display: inline-block;
     background: var(--primary-color);
     color: #000;
     padding: 4px 16px;
@@ -528,6 +525,7 @@ a {
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
+    margin-bottom: 1.5rem;
 }
 
 .pricing-card h3 {
@@ -577,23 +575,38 @@ a {
     line-height: 1.5;
 }
 
-.features {
-    list-style: none;
-    margin-bottom: 2rem;
-    flex: 1;
-}
-
-.features li {
-    padding: 0.5rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 0.9rem;
-}
-
-.features li i {
+.pricing-toggle {
+    text-align: center;
+    font-size: 0.85rem;
     color: var(--primary-color);
-    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.pricing-toggle:hover {
+    color: var(--primary-dark);
+}
+
+.pricing-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+    text-align: center;
+    margin-bottom: 0;
+}
+
+.pricing-card.open .pricing-detail {
+    max-height: 300px;
+    margin-bottom: 1.5rem;
+}
+
+.pricing-detail p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
 }
 
 .pricing-card .btn-main {
