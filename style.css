@@ -4,6 +4,8 @@
     /* Golden Yellow */
     --primary-dark: #dcc473;
     /* Grey Yellow */
+    --primary-hover: #eeb849;
+    /* Brighter Golden Yellow (button hover) */
     --secondary-brown: #302110;
     /* Dark Brown */
 
@@ -142,23 +144,23 @@ a {
 
 /* --- Buttons --- */
 .btn-main {
-    background-color: var(--primary-dark);
-    color: #fff;
+    background-color: var(--primary-color);
+    color: #000;
     padding: 10px 25px;
     border-radius: 30px;
     font-weight: 600;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow:
-        0 4px 12px 0 rgba(220, 196, 115, 0.3),
+        0 4px 12px 0 rgba(213, 141, 25, 0.3),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
 }
 
 .btn-main:hover {
-    background-color: var(--primary-color);
+    background-color: var(--primary-hover);
     transform: translateY(-2px) scale(1.02);
     color: #000 !important;
     box-shadow:
-        0 8px 24px 0 rgba(213, 141, 25, 0.4),
+        0 8px 24px 0 rgba(238, 184, 73, 0.4),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
 }
 
@@ -173,12 +175,12 @@ a {
 }
 
 .btn-outline:hover {
-    background-color: var(--primary-dark);
-    color: #fff;
-    border-color: var(--primary-dark);
+    background-color: var(--primary-color);
+    color: #000;
+    border-color: var(--primary-color);
     transform: translateY(-2px) scale(1.02);
     box-shadow:
-        0 6px 16px 0 rgba(220, 196, 115, 0.3),
+        0 6px 16px 0 rgba(213, 141, 25, 0.3),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -202,12 +204,12 @@ a {
 }
 
 .theme-btn:hover {
-    background: var(--primary-dark);
-    color: #fff;
-    border-color: var(--primary-dark);
+    background: var(--primary-color);
+    color: #000;
+    border-color: var(--primary-color);
     transform: rotate(180deg) scale(1.1);
     box-shadow:
-        0 4px 16px 0 rgba(220, 196, 115, 0.3),
+        0 4px 16px 0 rgba(213, 141, 25, 0.3),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -1013,31 +1015,31 @@ footer {
 
 .mobile-nav-item:hover,
 .mobile-nav-item:active {
-    background: var(--primary-dark);
+    background: var(--primary-color);
     border-color: var(--primary-color);
     transform: translateY(-5px);
 }
 
 .mobile-nav-item.active {
-    background: var(--primary-dark);
+    background: var(--primary-color);
     border-color: var(--primary-color);
 }
 
 .mobile-nav-item.active i {
-    color: #fff;
+    color: #000;
 }
 
 .mobile-nav-item.active span {
-    color: #fff;
+    color: #000;
 }
 
 .mobile-nav-item:hover i {
-    color: #fff;
+    color: #000;
     transform: scale(1.1);
 }
 
 .mobile-nav-item:hover span {
-    color: #fff;
+    color: #000;
 }
 
 /* --- Responsive --- */
