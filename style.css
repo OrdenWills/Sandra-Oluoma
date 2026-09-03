@@ -29,7 +29,7 @@
 
 /* --- LIGHT MODE OVERRIDES --- */
 body.light-mode {
-    --bg-color: #F8F9FA;
+    --bg-color: #fff4d9;
     --text-main: #302110;
     --text-muted: #555555;
 
