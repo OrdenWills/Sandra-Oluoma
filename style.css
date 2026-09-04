@@ -499,10 +499,11 @@ a {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 2rem;
+    align-items: start;
 }
 
 .pricing-card {
-    padding: 2rem;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -527,19 +528,19 @@ a {
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .pricing-card h3 {
-    font-size: 1.3rem;
-    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
     text-align: center;
 }
 
 .price {
     text-align: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid var(--glass-border);
 }
 
@@ -572,43 +573,19 @@ a {
 .description {
     color: var(--text-muted);
     text-align: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
     font-size: 0.9rem;
     line-height: 1.5;
+    flex: 1;
 }
 
-.pricing-toggle {
+.includes {
+    color: var(--text-muted);
     text-align: center;
     font-size: 0.85rem;
-    color: var(--primary-color);
-    font-weight: 600;
-    margin-bottom: 1.5rem;
-    cursor: pointer;
-    transition: color 0.3s;
-}
-
-.pricing-toggle:hover {
-    color: var(--primary-dark);
-}
-
-.pricing-detail {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.4s ease;
-    text-align: center;
-    margin-bottom: 0;
-}
-
-.pricing-card.open .pricing-detail {
-    max-height: 300px;
-    margin-bottom: 1.5rem;
-}
-
-.pricing-detail p {
-    color: var(--text-muted);
-    font-size: 0.9rem;
     line-height: 1.5;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
+    font-style: italic;
 }
 
 .pricing-card .btn-main {

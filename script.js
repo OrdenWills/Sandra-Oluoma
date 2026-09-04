@@ -1,44 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- PRICING TOGGLE LOGIC ---
-    const pricingCards = document.querySelectorAll('.pricing-card');
-    const pricingToggles = document.querySelectorAll('.pricing-toggle');
-
-    // Open "Headline Only" and "Best Value" cards by default
-    pricingCards.forEach(card => {
-        const title = card.querySelector('h3').textContent.toLowerCase();
-        if (title.includes('headline only') || card.classList.contains('best-value')) {
-            card.classList.add('open');
-            const toggle = card.querySelector('.pricing-toggle');
-            if (toggle && toggle.textContent.includes('to close')) {
-                // keep "Tap to close" for headline only, "Select to close" for best value
-            }
-        }
-    });
-
-    // Toggle on click
-    pricingToggles.forEach(toggle => {
-        toggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const card = toggle.closest('.pricing-card');
-            card.classList.toggle('open');
-        });
-    });
-
-    // Toggle on hover (desktop)
-    pricingCards.forEach(card => {
-        card.addEventListener('mouseenter', () => {
-            if (window.innerWidth > 768) {
-                card.classList.add('open');
-            }
-        });
-        card.addEventListener('mouseleave', () => {
-            if (window.innerWidth > 768 && !card.classList.contains('best-value') && !card.querySelector('h3').textContent.toLowerCase().includes('headline only')) {
-                card.classList.remove('open');
-            }
-        });
-    });
-
     // --- FAQ ACCORDION LOGIC ---
     const faqItems = document.querySelectorAll('.faq-item');
     
