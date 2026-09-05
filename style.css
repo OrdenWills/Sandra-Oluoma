@@ -220,16 +220,16 @@ a {
     font-family: 'Montserrat', sans-serif;
     color: var(--text-main);
     white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
 }
 
 .logo-fullname {
+    display: inline-block;
+    vertical-align: bottom;
     color: var(--text-main);
     overflow: hidden;
     white-space: nowrap;
     max-width: 200px;
-    transition: max-width 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.4s ease, margin 0.5s ease;
+    transition: max-width 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.4s ease;
 }
 
 .logo-dot {
