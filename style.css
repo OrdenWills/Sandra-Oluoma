@@ -524,6 +524,7 @@ a {
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
+    overflow: visible;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1122,6 +1123,28 @@ footer {
 
     .mobile-controls {
         display: flex;
+    }
+
+    .logo-wrapper {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .logo {
+        font-size: 1.05rem;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .logo-fullname {
+        max-width: 110px;
+    }
+
+    .glass-nav.reveal-profile .logo-fullname {
+        max-width: 0;
+        opacity: 0;
+        margin-left: 0;
     }
 
     body {
