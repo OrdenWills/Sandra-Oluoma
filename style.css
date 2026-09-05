@@ -588,6 +588,72 @@ a {
     font-style: italic;
 }
 
+.bestseller-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    flex: 1;
+}
+
+.bestseller-row .description {
+    margin-bottom: 0;
+}
+
+.tip-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.tip-tooltip {
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--nav-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    width: 230px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    z-index: 20;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    text-align: left;
+}
+
+.tip-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-top-color: var(--glass-border);
+}
+
+.tip-tooltip p {
+    color: var(--text-main);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.tip-icon:hover .tip-tooltip,
+.tip-icon:focus .tip-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
 .pricing-card .btn-main {
     text-align: center;
     display: block;
