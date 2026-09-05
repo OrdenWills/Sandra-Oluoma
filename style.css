@@ -229,7 +229,8 @@ a {
     overflow: hidden;
     white-space: nowrap;
     max-width: 200px;
-    transition: max-width 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.4s ease;
+    margin-left: 0.25em;
+    transition: max-width 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.4s ease, margin-left 0.5s ease;
 }
 
 .logo-dot {
@@ -239,7 +240,7 @@ a {
 .glass-nav.reveal-profile .logo-fullname {
     max-width: 0;
     opacity: 0;
-    margin: 0;
+    margin-left: 0;
 }
 
 .nav-links {
