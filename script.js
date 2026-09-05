@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    // Prevent transitions on initial load to fix the "reloading mid-scroll" glitch
+    document.body.classList.add('preload');
+
     // --- FAQ ACCORDION LOGIC ---
     const faqItems = document.querySelectorAll('.faq-item');
     
@@ -31,18 +34,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             
-            // Simple validation
             if (name && email) {
-                // Show success message
                 const btn = waitlistForm.querySelector('button');
                 const originalText = btn.textContent;
                 btn.textContent = 'YOU\'RE ON THE LIST!';
                 btn.style.backgroundColor = '#28a745';
                 
-                // Reset form
                 waitlistForm.reset();
                 
-                // Reset button after 3 seconds
                 setTimeout(() => {
                     btn.textContent = originalText;
                     btn.style.backgroundColor = '';
@@ -55,12 +54,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeBtns = document.querySelectorAll('.theme-btn:not(#mobile-menu-btn)');
     const body = document.body;
 
-    // Check for saved preference and initialize
     if (localStorage.getItem('theme') === 'light') {
         enableLightMode();
     }
 
-    // Add event listeners to ALL theme toggle buttons
     themeBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             if (body.classList.contains('light-mode')) {
@@ -97,7 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
 
     if (mobileMenuBtn && mobileModal) {
-        // Toggle Modal
         mobileMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             mobileModal.classList.toggle('active');
@@ -112,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Close on Link Click
         mobileNavItems.forEach(item => {
             item.addEventListener('click', () => {
                 mobileModal.classList.remove('active');
@@ -122,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Close when clicking outside
         document.addEventListener('click', (e) => {
             if (mobileModal.classList.contains('active') &&
                 !mobileModal.contains(e.target) &&
@@ -141,7 +135,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const navbar = document.querySelector('.glass-nav');
     const aboutSection = document.getElementById('about');
 
-    window.addEventListener('scroll', () => {
+    // Bundled scroll logic into a function
+    function updateNavState() {
         const scrollY = window.scrollY;
 
         // Navbar glass effect
@@ -164,28 +159,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         sections.forEach(section => {
             const sectionTop = section.offsetTop;
-            const sectionHeight = section.clientHeight;
             if (scrollY >= (sectionTop - 200)) { 
                 current = section.getAttribute('id');
             }
         });
 
-        // Highlight desktop nav links
-        document.querySelectorAll('.nav-links li a').forEach(a => {
-            a.classList.remove('active');
-            if (a.getAttribute('href').includes(current)) {
-                a.classList.add('active');
+        // Highlight both desktop and mobile nav items cleanly
+        document.querySelectorAll('.nav-links li a, .mobile-nav-item').forEach(el => {
+            el.classList.remove('active');
+            if (current && el.getAttribute('href').includes(current)) {
+                el.classList.add('active');
             }
         });
+    }
 
-        // Highlight mobile nav items
-        document.querySelectorAll('.mobile-nav-item').forEach(item => {
-            item.classList.remove('active');
-            if (item.getAttribute('href').includes(current)) {
-                item.classList.add('active');
-            }
-        });
-    });
+    // 1. Call it immediately on load to apply correct state BEFORE user scrolls
+    updateNavState();
+    
+    // 2. Remove the preload class slightly after load to re-enable smooth transitions
+    setTimeout(() => {
+        document.body.classList.remove('preload');
+    }, 150);
+
+    // 3. Attach it to the scroll event listener
+    window.addEventListener('scroll', updateNavState);
     
     // --- SMOOTH SCROLL ---
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {

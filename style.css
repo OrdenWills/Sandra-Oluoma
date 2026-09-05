@@ -57,6 +57,11 @@ html {
     overflow-x: hidden;
 }
 
+/* Prevent animations on page load */
+.preload * {
+    transition: none !important;
+}
+
 body {
     background-color: var(--bg-color);
     background-image: var(--bg-gradient);
@@ -1148,18 +1153,18 @@ footer {
     }
 
     .logo {
-        font-size: 1rem;
+        font-size: 1.1rem;
         line-height: 1.15;
-        white-space: normal;
+        white-space: nowrap;
         overflow: hidden;
     }
 
     .logo-first {
-        display: block;
+        display: inline;
     }
 
     .logo-fullname {
-        margin-left: 0;
+        margin-left: 0.25em;
         max-width: 140px;
     }
 
