@@ -222,6 +222,11 @@ a {
     white-space: nowrap;
 }
 
+.logo-first {
+    display: inline;
+    color: var(--text-main);
+}
+
 .logo-fullname {
     display: inline-block;
     vertical-align: bottom;
@@ -1127,24 +1132,25 @@ footer {
 
     .logo-wrapper {
         min-width: 0;
-        flex: 1;
     }
 
     .logo {
-        font-size: 1.05rem;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 1rem;
+        line-height: 1.15;
+        white-space: normal;
+    }
+
+    .logo-first {
+        display: block;
     }
 
     .logo-fullname {
-        max-width: 110px;
+        margin-left: 0;
+        max-width: 140px;
     }
 
-    .glass-nav.reveal-profile .logo-fullname {
-        max-width: 0;
-        opacity: 0;
-        margin-left: 0;
+    .glass-nav.reveal-profile .logo-dot {
+        display: none;
     }
 
     body {
