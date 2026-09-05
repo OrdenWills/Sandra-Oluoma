@@ -280,7 +280,7 @@ a {
 
 .badge {
     background: rgba(213, 141, 25, 0.2);
-    color: var(--primary-dark);
+    color: var(--primary-hover);
     padding: 5px 15px;
     border-radius: 20px;
     font-size: 0.85rem;
