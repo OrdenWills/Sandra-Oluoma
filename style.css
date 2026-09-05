@@ -1290,4 +1290,17 @@ footer {
         height: 35px;
         min-width: 35px;
     }
+
+    /* Tooltip Mobile Fix */
+    .tip-tooltip {
+        left: auto;
+        right: -10px;
+        transform: none;
+    }
+
+    .tip-tooltip::after {
+        left: auto;
+        right: 14px;
+        transform: none;
+    }
 }
