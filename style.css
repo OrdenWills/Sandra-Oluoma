@@ -53,6 +53,10 @@ body.light-mode {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
+html {
+    overflow-x: hidden;
+}
+
 body {
     background-color: var(--bg-color);
     background-image: var(--bg-gradient);
@@ -520,7 +524,7 @@ a {
 
 .pricing-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
     gap: 2rem;
     align-items: start;
 }
@@ -690,7 +694,7 @@ a {
 
 .transformations-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
     gap: 2rem;
     margin-bottom: 4rem;
 }
@@ -757,7 +761,7 @@ a {
 /* Testimonials Grid */
 .testimonials-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
     gap: 2rem;
     margin-bottom: 4rem;
 }
@@ -795,7 +799,7 @@ a {
 
 .testimonials-slider {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
     gap: 2rem;
 }
 
@@ -1114,6 +1118,11 @@ footer {
     .glass-nav {
         top: auto;
         bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
         border-bottom: none;
         border-top: 1px solid var(--glass-border);
         background: var(--nav-bg);
@@ -1128,16 +1137,21 @@ footer {
 
     .mobile-controls {
         display: flex;
+        flex-shrink: 0;
+        margin-left: 0.5rem;
     }
 
     .logo-wrapper {
         min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
     }
 
     .logo {
         font-size: 1rem;
         line-height: 1.15;
         white-space: normal;
+        overflow: hidden;
     }
 
     .logo-first {
