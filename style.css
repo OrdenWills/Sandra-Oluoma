@@ -295,7 +295,7 @@ a {
 }
 
 .highlight {
-    color: var(--primary-dark);
+    color: var(--primary-hover);
 }
 
 .hero-text p {
