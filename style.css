@@ -1105,6 +1105,11 @@ footer {
 }
 
 /* --- Mobile Specific Styles --- */
+.mobile-call-btn {
+    display: none;
+    text-decoration: none;
+}
+
 .mobile-controls {
     display: none;
     gap: 1rem;
@@ -1226,6 +1231,11 @@ footer {
         margin-left: 0.5rem;
     }
 
+    .mobile-call-btn {
+        display: flex;
+        flex-shrink: 0;
+    }
+
     .logo-wrapper {
         min-width: 0;
         flex: 1 1 auto;
@@ -1249,7 +1259,7 @@ footer {
     }
 
     .glass-nav.reveal-profile .logo-dot {
-        display: none;
+        display: inline;
     }
 
     body {
