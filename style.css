@@ -722,16 +722,6 @@ a {
     padding: 2rem;
 }
 
-.profile-label {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--primary-color);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 1rem;
-    text-align: center;
-}
-
 .ba-stack {
     display: flex;
     flex-direction: row;
