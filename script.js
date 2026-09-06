@@ -193,4 +193,51 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     });
+
+    // --- TRANSFORMATION CAROUSEL ---
+    const tsSlider = document.getElementById('transformation-slider');
+    const tsTrack = tsSlider.querySelector('.transformation-track');
+    const tsSlides = Array.from(tsSlider.querySelectorAll('.transformation-slide'));
+    const tsPrev = tsSlider.querySelector('.ts-prev');
+    const tsNext = tsSlider.querySelector('.ts-next');
+    const tsDotsWrap = tsSlider.parentElement.querySelector('.ts-dots');
+    const TS_INTERVAL = 4000;
+    let currentSlide = 0;
+    let tsAutoTimer;
+
+    tsSlides.forEach((_, index) => {
+        const dot = document.createElement('button');
+        dot.classList.add('ts-dot');
+        dot.setAttribute('aria-label', 'Go to transformation ' + (index + 1));
+        dot.addEventListener('click', () => goToSlide(index, true));
+        tsDotsWrap.appendChild(dot);
+    });
+
+    const tsDots = Array.from(tsDotsWrap.querySelectorAll('.ts-dot'));
+
+    function goToSlide(index, resetTimer) {
+        currentSlide = (index + tsSlides.length) % tsSlides.length;
+        tsTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
+        tsDots.forEach((dot, i) => dot.classList.toggle('active', i === currentSlide));
+        if (resetTimer) restartAuto();
+    }
+
+    function startAuto() {
+        clearInterval(tsAutoTimer);
+        tsAutoTimer = setInterval(() => goToSlide(currentSlide + 1, false), TS_INTERVAL);
+    }
+
+    function restartAuto() {
+        clearInterval(tsAutoTimer);
+        startAuto();
+    }
+
+    tsPrev.addEventListener('click', () => goToSlide(currentSlide - 1, true));
+    tsNext.addEventListener('click', () => goToSlide(currentSlide + 1, true));
+
+    tsSlider.addEventListener('pointerenter', () => clearInterval(tsAutoTimer));
+    tsSlider.addEventListener('pointerleave', startAuto);
+
+    goToSlide(0, false);
+    startAuto();
 });

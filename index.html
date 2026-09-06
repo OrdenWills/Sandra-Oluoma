@@ -330,70 +330,74 @@
             </div>
 
             <!-- Before & After Transformations -->
-            <div class="transformations-grid">
-                <div class="transformation-card glass-card">
-                    <div class="transformation-header">
-                        <span class="profile-label">PROFILE 01</span>
-                    </div>
-                    <div class="before-after">
-                        <div class="before">
-                            <span class="ba-label">BEFORE</span>
-                            <img src="assets/profile-01-before.png" alt="Profile 01 Before Optimization">
+            <div class="transformation-slider">
+                <div class="transformation-viewport glass-card" id="transformation-slider">
+                    <div class="transformation-track">
+                        <div class="transformation-slide">
+                            <div class="profile-label">PROFILE 01</div>
+                            <div class="ba-stack">
+                                <div class="before">
+                                    <span class="ba-label">BEFORE</span>
+                                    <img src="assets/profile-01-before.png" alt="Profile 01 Before Optimization">
+                                </div>
+                                <div class="after">
+                                    <span class="ba-label">AFTER</span>
+                                    <img src="assets/profile-01-after.png" alt="Profile 01 After Optimization">
+                                </div>
+                            </div>
                         </div>
-                        <div class="after">
-                            <span class="ba-label">AFTER</span>
-                            <img src="assets/profile-01-after.png" alt="Profile 01 After Optimization">
-                        </div>
-                    </div>
-                </div>
 
-                <div class="transformation-card glass-card">
-                    <div class="transformation-header">
-                        <span class="profile-label">PROFILE 02</span>
-                    </div>
-                    <div class="before-after">
-                        <div class="before">
-                            <span class="ba-label">BEFORE</span>
-                            <img src="assets/profile-02-before.png" alt="Profile 02 Before Optimization">
+                        <div class="transformation-slide">
+                            <div class="profile-label">PROFILE 02</div>
+                            <div class="ba-stack">
+                                <div class="before">
+                                    <span class="ba-label">BEFORE</span>
+                                    <img src="assets/profile-02-before.png" alt="Profile 02 Before Optimization">
+                                </div>
+                                <div class="after">
+                                    <span class="ba-label">AFTER</span>
+                                    <img src="assets/profile-02-after.png" alt="Profile 02 After Optimization">
+                                </div>
+                            </div>
                         </div>
-                        <div class="after">
-                            <span class="ba-label">AFTER</span>
-                            <img src="assets/profile-02-after.png" alt="Profile 02 After Optimization">
-                        </div>
-                    </div>
-                </div>
 
-                <div class="transformation-card glass-card">
-                    <div class="transformation-header">
-                        <span class="profile-label">PROFILE 03</span>
-                    </div>
-                    <div class="before-after">
-                        <div class="before">
-                            <span class="ba-label">BEFORE</span>
-                            <img src="assets/profile-03-before.png" alt="Profile 03 Before Optimization">
+                        <div class="transformation-slide">
+                            <div class="profile-label">PROFILE 03</div>
+                            <div class="ba-stack">
+                                <div class="before">
+                                    <span class="ba-label">BEFORE</span>
+                                    <img src="assets/profile-03-before.png" alt="Profile 03 Before Optimization">
+                                </div>
+                                <div class="after">
+                                    <span class="ba-label">AFTER</span>
+                                    <img src="assets/profile-03-after.png" alt="Profile 03 After Optimization">
+                                </div>
+                            </div>
                         </div>
-                        <div class="after">
-                            <span class="ba-label">AFTER</span>
-                            <img src="assets/profile-03-after.png" alt="Profile 03 After Optimization">
-                        </div>
-                    </div>
-                </div>
 
-                <div class="transformation-card glass-card">
-                    <div class="transformation-header">
-                        <span class="profile-label">PROFILE 04</span>
-                    </div>
-                    <div class="before-after">
-                        <div class="before">
-                            <span class="ba-label">BEFORE</span>
-                            <img src="assets/profile-04-before.png" alt="Profile 04 Before Optimization">
+                        <div class="transformation-slide">
+                            <div class="profile-label">PROFILE 04</div>
+                            <div class="ba-stack">
+                                <div class="before">
+                                    <span class="ba-label">BEFORE</span>
+                                    <img src="assets/profile-04-before.png" alt="Profile 04 Before Optimization">
+                                </div>
+                                <div class="after">
+                                    <span class="ba-label">AFTER</span>
+                                    <img src="assets/profile-04-after.png" alt="Profile 04 After Optimization">
+                                </div>
+                            </div>
                         </div>
-                        <div class="after">
-                            <span class="ba-label">AFTER</span>
-                            <img src="assets/profile-04-after.png" alt="Profile 04 After Optimization">
-                        </div>
                     </div>
+
+                    <button class="ts-arrow ts-prev" aria-label="Previous transformation">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="ts-arrow ts-next" aria-label="Next transformation">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
                 </div>
+                <div class="ts-dots" aria-hidden="true"></div>
             </div>
 
             <!-- Client Testimonials -->
