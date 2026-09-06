@@ -1232,10 +1232,14 @@ footer {
     }
 
     .mobile-call-btn {
-        display: flex;
+        display: none;
         flex-shrink: 0;
         color: var(--primary-color);
         border-color: rgba(213, 141, 25, 0.4);
+    }
+
+    .glass-nav.reveal-profile .mobile-call-btn {
+        display: flex;
     }
 
     .logo-wrapper {
