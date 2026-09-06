@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- LIGHT/DARK MODE LOGIC ---
-    const themeBtns = document.querySelectorAll('.theme-btn:not(#mobile-menu-btn)');
+    const themeBtns = document.querySelectorAll('.theme-btn:not(#mobile-menu-btn):not(.mobile-call-btn)');
     const body = document.body;
 
     if (localStorage.getItem('theme') === 'light') {

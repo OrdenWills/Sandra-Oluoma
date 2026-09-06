@@ -1234,6 +1234,8 @@ footer {
     .mobile-call-btn {
         display: flex;
         flex-shrink: 0;
+        color: var(--primary-color);
+        border-color: rgba(213, 141, 25, 0.4);
     }
 
     .logo-wrapper {
