@@ -348,9 +348,9 @@ a {
 }
 
 .img-wrapper {
-    width: 400px;
-    height: 400px;
-    border-radius: 50%;
+    width: 360px;
+    height: 450px;
+    border-radius: 20px;
     overflow: hidden;
     padding: 0;
     border: 3px solid var(--primary-color);
@@ -362,6 +362,7 @@ a {
     position: relative;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    transform: rotate(2deg);
 }
 
 .img-wrapper::before {
@@ -371,7 +372,7 @@ a {
     left: 0;
     right: 0;
     bottom: 0;
-    border-radius: 50%;
+    border-radius: 20px;
     background: linear-gradient(135deg,
             rgba(255, 255, 255, 0.2) 0%,
             transparent 50%,
@@ -384,7 +385,7 @@ a {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 50%;
+    border-radius: 20px;
 }
 
 /* --- Problem Section --- */
@@ -763,6 +764,15 @@ a {
     color: var(--text-muted);
 }
 
+.before img,
+.after img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+}
+
 /* Testimonials Grid */
 .testimonials-grid {
     display: grid;
@@ -793,6 +803,33 @@ a {
 
 .testimonial-screenshot .ba-placeholder {
     min-height: 200px;
+}
+
+.testimonial-screenshot img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+}
+
+.featured-receipt {
+    grid-column: 1 / -1;
+}
+
+.receipt-strips {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 4rem;
+}
+
+.receipt-strips img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
 }
 
 /* Client Testimonials */
@@ -841,9 +878,33 @@ a {
 }
 
 .playbook-content {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
     padding: 3rem;
+}
+
+.playbook-wrap {
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+    text-align: left;
+}
+
+.playbook-cover {
+    flex: 0 0 320px;
+}
+
+.playbook-cover img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+}
+
+.playbook-copy {
+    flex: 1;
     text-align: center;
 }
 
@@ -1205,8 +1266,22 @@ footer {
     }
 
     .img-wrapper {
-        width: 280px;
-        height: 280px;
+        width: 250px;
+        height: 313px;
+    }
+
+    .playbook-wrap {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .playbook-cover {
+        flex: 0 0 auto;
+        width: 220px;
+    }
+
+    .receipt-strips {
+        grid-template-columns: 1fr;
     }
 
     .problem-content h2 {
