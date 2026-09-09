@@ -61,14 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.disabled = false;
                 }, 3000);
             } catch (err) {
-                btn.textContent = 'TRY AGAIN';
-                btn.style.backgroundColor = '#c0392b';
-                btn.disabled = false;
-
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.backgroundColor = '';
-                }, 3000);
+                // Fallback: native form POST (works even where fetch is CORS-blocked)
+                waitlistForm.action = 'https://formsubmit.co/sclems600@gmail.com';
+                waitlistForm.method = 'POST';
+                waitlistForm.submit();
             }
         });
     }
