@@ -26,22 +26,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- WAITLIST FORM LOGIC ---
     const waitlistForm = document.getElementById('waitlist-form');
-    
+
     if (waitlistForm) {
-        waitlistForm.addEventListener('submit', (e) => {
+        waitlistForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
-            
-            if (name && email) {
-                const btn = waitlistForm.querySelector('button');
-                const originalText = btn.textContent;
-                btn.textContent = 'YOU\'RE ON THE LIST!';
+
+            if (!name || !email) return;
+
+            const btn = waitlistForm.querySelector('button');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(waitlistForm.action.replace('/sclems600@gmail.com', '/ajax/sclems600@gmail.com'), {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    body: new FormData(waitlistForm)
+                });
+
+                if (!response.ok) throw new Error('Submit failed');
+
+                btn.textContent = "YOU'RE ON THE LIST!";
                 btn.style.backgroundColor = '#28a745';
-                
                 waitlistForm.reset();
-                
+
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.backgroundColor = '';
+                    btn.disabled = false;
+                }, 3000);
+            } catch (err) {
+                btn.textContent = 'TRY AGAIN';
+                btn.style.backgroundColor = '#c0392b';
+                btn.disabled = false;
+
                 setTimeout(() => {
                     btn.textContent = originalText;
                     btn.style.backgroundColor = '';
