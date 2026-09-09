@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sandra-chukwuemeka.github.io/Unignorable-LinkedIn-Profile/sitemap.xml
