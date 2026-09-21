@@ -1983,7 +1983,6 @@ footer {
     transform: none;
 }
 
-}
 
 /* --- Responsive (mobile bottom nav sits at 0) --- */
 @media screen and (max-width: 768px) {

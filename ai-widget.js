@@ -65,9 +65,7 @@
 
     var SUGGESTION_CHIPS = [
         { label: '🔎 Audit my LinkedIn profile', value: 'Please audit my LinkedIn profile. Here is my profile URL: ' },
-        { label: '✍️ Rewrite my headline', value: 'Write 3 unignorable LinkedIn headline options for me. What one thing do you need to know first?' },
-        { label: '🚀 5 quick wins', value: 'Give me 5 quick wins (under 15 minutes each) I can do today to improve my LinkedIn profile.' },
-        { label: '📖 About section help', value: 'Help me write my About section — what opening hook should I use?' }
+        { label: 'Why don\'t I get much engagement on my posts?', value: 'Why don\'t I get much engagement on my LinkedIn posts? Give me 3 actionable fixes.' }
     ];
 
     var STATE = {
