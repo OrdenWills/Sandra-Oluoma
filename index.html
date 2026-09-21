@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -252,7 +252,7 @@
                     </div>
                     <div class="pain-point">
                         <i class="fa-solid fa-quote-left"></i>
-                        <p>"My About section feels like a résumé."</p>
+                        <p>"My About section feels like a rÃ©sumÃ©."</p>
                     </div>
                     <div class="pain-point">
                         <i class="fa-solid fa-quote-left"></i>
@@ -313,10 +313,10 @@
                     <div class="best-value-badge">BEST VALUE</div>
                     <h3>The Unignorable LinkedIn Profile Revamp</h3>
                     <div class="price">
-                        <span class="currency">₦</span>
+                        <span class="currency">â‚¦</span>
                         <span class="amount">30,000</span>
                         <span class="usd">($21)</span>
-                        <span class="original-price">₦32,000 ($23)</span>
+                        <span class="original-price">â‚¦32,000 ($23)</span>
                     </div>
                     <div class="bestseller-row">
                         <div class="description">Everything working together to make your profile clear, credible, and unignorable.</div>
@@ -334,7 +334,7 @@
                 <div class="pricing-card glass-card">
                     <h3>Headline Only</h3>
                     <div class="price">
-                        <span class="currency">₦</span>
+                        <span class="currency">â‚¦</span>
                         <span class="amount">5,000</span>
                         <span class="usd">($4)</span>
                     </div>
@@ -346,7 +346,7 @@
                 <div class="pricing-card glass-card">
                     <h3>About Section Only</h3>
                     <div class="price">
-                        <span class="currency">₦</span>
+                        <span class="currency">â‚¦</span>
                         <span class="amount">10,000</span>
                         <span class="usd">($8)</span>
                     </div>
@@ -358,7 +358,7 @@
                 <div class="pricing-card glass-card">
                     <h3>Headline + About Section</h3>
                     <div class="price">
-                        <span class="currency">₦</span>
+                        <span class="currency">â‚¦</span>
                         <span class="amount">15,000</span>
                         <span class="usd">($10.50)</span>
                     </div>
@@ -370,7 +370,7 @@
                 <div class="pricing-card glass-card">
                     <h3>Featured Section Setup</h3>
                     <div class="price">
-                        <span class="currency">₦</span>
+                        <span class="currency">â‚¦</span>
                         <span class="amount">7,000</span>
                         <span class="usd">($5)</span>
                     </div>
@@ -382,7 +382,7 @@
                 <div class="pricing-card glass-card">
                     <h3>Banner Design</h3>
                     <div class="price">
-                        <span class="currency">₦</span>
+                        <span class="currency">â‚¦</span>
                         <span class="amount">10,000</span>
                         <span class="usd">($8)</span>
                     </div>
@@ -611,9 +611,51 @@
     <!-- Footer -->
     <footer>
         <div class="footer-content">
-            <p class="copyright">© 2025 Sandra Chukwuemeka Oluoma. All Rights Reserved.</p>
+            <p class="copyright">Â© 2025 Sandra Chukwuemeka Oluoma. All Rights Reserved.</p>
         </div>
     </footer>
+
+    <!-- ===== AI PROFILE AUDIT ASSISTANT (Sandra. AI) ===== -->
+    <div id="ai-widget" aria-live="polite">
+        <button id="ai-launcher" type="button" class="ai-launcher-icon"
+            aria-label="Open Sandra AI â€” LinkedIn Profile Auditor" aria-expanded="false"
+            title="Audit your LinkedIn profile with Sandra. AI">
+            <i class="fa-solid fa-sparkles" aria-hidden="true"></i>
+            <span class="ai-launcher-glow" aria-hidden="true"></span>
+        </button>
+
+        <div id="ai-panel" role="dialog" aria-label="Sandra. AI â€” Profile Audit Agent">
+            <div class="ai-panel-header">
+                <div class="ai-panel-title">
+                    <span class="ai-panel-avatar" aria-hidden="true">S</span>
+                    <div class="ai-panel-meta">
+                        <div class="ai-panel-name">Sandra. AI</div>
+                        <div class="ai-panel-status"><span class="ai-status-dot"></span>Profile Audit Agent Â· Online</div>
+                    </div>
+                </div>
+                <div class="ai-panel-actions">
+                    <button type="button" id="ai-clear" class="ai-icon-btn" title="New conversation"
+                        aria-label="New conversation"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button type="button" id="ai-close" class="ai-icon-btn" title="Minimize"
+                        aria-label="Minimize"><i class="fa-solid fa-minus"></i></button>
+                </div>
+            </div>
+
+            <div id="ai-messages" class="ai-messages"></div>
+
+            <div id="ai-suggestions" class="ai-suggestions"></div>
+
+            <div class="ai-input-row">
+                <textarea id="ai-input" rows="1"
+                    placeholder="Paste a LinkedIn profile URL or ask a questionâ€¦"></textarea>
+                <button type="button" id="ai-send" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="ai-config.js"></script>
+    <script src="ai-widget.js"></script>
 
     <script src="script.js"></script>
 </body>

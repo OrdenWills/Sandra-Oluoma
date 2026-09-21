@@ -1,4 +1,4 @@
-:root {
+﻿:root {
     /* --- Brand Colors (Constant) --- */
     --primary-color: #d58d19;
     /* Golden Yellow */
@@ -1430,7 +1430,7 @@ footer {
 }
 
 /* ============================================================
-   SANDRA. AI — PROFILE AUDIT ASSISTANT WIDGET
+   SANDRA. AI â€” PROFILE AUDIT ASSISTANT WIDGET
    ============================================================ */
 #ai-widget {
     font-family: 'Poppins', sans-serif;
@@ -1983,12 +1983,6 @@ footer {
     transform: none;
 }
 
-.ai-disclaimer {
-    font-size: 0.68rem;
-    color: var(--text-muted);
-    text-align: center;
-    padding: 0 14px 10px;
-    flex-shrink: 0;
 }
 
 /* --- Responsive (mobile bottom nav sits at 0) --- */
