@@ -1,2 +1,4 @@
 /profile-pic.png
-/ai-config.js
+server/.env
+server/__pycache__/
+*.pyc

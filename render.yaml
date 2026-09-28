@@ -1,0 +1,29 @@
+# Render blueprint for the Sandra AI backend.
+# In Render: New -> Blueprint -> point at this repo. Then set the two
+# secret env vars (GEMINI_API_KEY, OPENCODE_API_KEY) in the dashboard.
+services:
+  - type: web
+    name: sandra-ai-backend
+    runtime: python
+    rootDir: server
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.15
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: OPENCODE_API_KEY
+        sync: false
+      - key: OPENCODE_BASE_URL
+        value: https://opencode.ai/zen/v1
+      - key: OPENCODE_MODEL
+        value: nemotron-3-ultra-free
+      - key: FRONTEND_ORIGINS
+        value: https://sandra-chukwuemeka.github.io
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "true"
+      - key: MAX_RETRIES_PER_PROVIDER
+        value: "2"
