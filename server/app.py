@@ -1,6 +1,6 @@
 """Sandra AI backend — FastAPI proxy for the LinkedIn Profile Audit widget.
 
-Provider order: Gemini (primary) -> CleanAPIs (failover 1) -> OpenCode (failover 2).
+Provider order: CleanAPIs (primary) -> Gemini (failover 1) -> OpenCode (failover 2).
 Each provider is retried (backoff) before failing over to the next.
 Only when ALL providers fail does the request fail (502 + per-provider summary).
 
@@ -33,11 +33,11 @@ load_dotenv()  # server/.env locally; Render injects env vars directly
 
 # ---------------------------------------------------------------- config ---
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
 CLEAN_API_KEY = (os.getenv("CLEAN_API_KEY") or os.getenv("clean_api_key") or "").strip()
 CLEAN_BASE_URL = os.getenv("CLEAN_BASE_URL", "https://cleanapis.com/v1").strip().rstrip("/")
 CLEAN_MODEL = os.getenv("CLEAN_MODEL", "claude-opus-4.8").strip()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
 OPENCODE_API_KEY = os.getenv("OPENCODE_API_KEY", "").strip()
 OPENCODE_BASE_URL = os.getenv("OPENCODE_BASE_URL", "https://opencode.ai/zen/v1").strip().rstrip("/")
 OPENCODE_MODEL = os.getenv("OPENCODE_MODEL", "nemotron-3-ultra-free").strip()
@@ -541,17 +541,17 @@ async def _with_retries(label: str, fn, *args):
 @app.get("/")
 async def root():
     return {"service": "sandra-ai-backend", "status": "ok",
-            "providers": ["gemini", "cleanapis", "opencode"],
+            "providers": ["cleanapis", "gemini", "opencode"],
             "docs": "POST /v1/chat/completions with {messages, model?, temperature?, max_tokens?, stream?}"}
 
 
 @app.get("/health")
 async def health():
     return {"status": "ok",
-            "providers": ["gemini", "cleanapis", "opencode"],
-            "gemini": {"configured": bool(GEMINI_API_KEY), "model": GEMINI_MODEL},
+            "providers": ["cleanapis", "gemini", "opencode"],
             "cleanapis": {"configured": bool(CLEAN_API_KEY), "model": CLEAN_MODEL,
                           "base_url": CLEAN_BASE_URL},
+            "gemini": {"configured": bool(GEMINI_API_KEY), "model": GEMINI_MODEL},
             "opencode": {"configured": bool(OPENCODE_API_KEY), "model": OPENCODE_MODEL,
                          "base_url": OPENCODE_BASE_URL},
             "cors_allow_all": CORS_ALLOW_ALL,
@@ -573,7 +573,7 @@ async def chat_completions(req: ChatRequest, request: Request):
         async def _gen() -> AsyncIterator[str]:
             client = httpx.AsyncClient(timeout=HTTP_TIMEOUT)
             try:
-                streamers = [("gemini", stream_gemini), ("cleanapis", stream_cleanapis), ("opencode", stream_opencode)]
+                streamers = [("cleanapis", stream_cleanapis), ("gemini", stream_gemini), ("opencode", stream_opencode)]
                 for idx, (name, fn) in enumerate(streamers):
                     try:
                         async for chunk in _with_retries_stream(name, fn, client, req, cid):
@@ -598,9 +598,9 @@ async def chat_completions(req: ChatRequest, request: Request):
                                  headers={"Cache-Control": "no-cache",
                                           "X-Accel-Buffering": "no"})
 
-    # Non-streaming: try gemini, fail over to cleanapis, then opencode.
+    # Non-streaming: try cleanapis, fail over to gemini, then opencode.
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        for name, fn in (("gemini", call_gemini), ("cleanapis", call_cleanapis), ("opencode", call_opencode)):
+        for name, fn in (("cleanapis", call_cleanapis), ("gemini", call_gemini), ("opencode", call_opencode)):
             try:
                 text = await _with_retries(name, fn, client, req)
                 return JSONResponse(openai_completion(cid, req.model or name, text))
