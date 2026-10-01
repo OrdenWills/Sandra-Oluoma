@@ -8,7 +8,8 @@ tried when the previous one could not answer:
   * model unavailable / 5xx     -> rotate to the next MODEL, then next provider
   * network error / empty body  -> rotate (re-tried in place only if
                                    MAX_RETRIES_PER_PROVIDER > 0, default 0)
-  * bad key / bad request / blocked content -> stop, return the error
+  * dead key / no entitlement / billing -> abandon that provider, next provider
+  * bad request / blocked content -> stop, return the error
 
 The moment a candidate produces its FIRST content delta the response starts
 streaming to the client and no other provider is ever contacted. After that
@@ -197,13 +198,17 @@ def _pinned_model(provider: str, hint: str) -> Optional[str]:
     return hint
 
 
-def build_chain(req: ChatRequest) -> List[Candidate]:
-    """Ordered (provider, model) candidates. Unconfigured providers are skipped."""
+def build_groups(req: ChatRequest) -> List[Tuple[str, List[Candidate]]]:
+    """Ordered [(provider, [candidate models])] pairs. Unconfigured providers are skipped.
+
+    Models are grouped per provider so a dead provider (dead key, no
+    entitlement) can be abandoned without burning its whole model list.
+    """
     hint = (req.model or "").strip()
     order = list(DEFAULT_ORDER)
     if "gemini" in hint.lower():
         order = ["gemini", "cleanapis", "opencode"]
-    chain: List[Candidate] = []
+    groups: List[Tuple[str, List[Candidate]]] = []
     for name in order:
         p = REGISTRY[name]
         if not p["key"]:
@@ -214,26 +219,36 @@ def build_chain(req: ChatRequest) -> List[Candidate]:
             models.append(pinned)
         models.extend(p["models"])
         seen = set()
+        cands: List[Candidate] = []
         for m in models:
             m = m.strip()
             if not m or m in seen:
                 continue
             seen.add(m)
-            chain.append(Candidate(name, m, p["kind"], p["base"], p["key"]))
-    return chain
+            cands.append(Candidate(name, m, p["kind"], p["base"], p["key"]))
+        if cands:
+            groups.append((name, cands))
+    return groups
+
+
+def build_chain(req: ChatRequest) -> List[Candidate]:
+    """Flat view of build_groups() (debugging / health)."""
+    return [c for _, cands in build_groups(req) for c in cands]
 
 
 # ---------------------------------------------------------------- errors ---
 
-ROTATE = "rotate"   # try the next model / provider
-STOP = "stop"       # terminal: another model cannot help
+ROTATE = "rotate"           # try the next model, then the next provider
+SKIP_PROVIDER = "skip"       # this provider is dead for this request -> next provider
+STOP = "stop"                # only the client can fix it -> surface the error
 
 
 class ProviderError(Exception):
     """A candidate could not produce an answer.
 
-    kind=ROTATE -> move on to the next candidate.
-    kind=STOP   -> abort the chain and surface the error to the client.
+    kind=ROTATE        -> move on to the next candidate.
+    kind=SKIP_PROVIDER -> abandon this provider entirely, move to the next one.
+    kind=STOP          -> abort the chain and surface the error to the client.
     """
 
     def __init__(self, cand: Any, message: str, kind: str = ROTATE,
@@ -265,7 +280,11 @@ _AUTH_MARKERS = ("api key", "api_key", "unauthorized", "authentication",
                  "invalid bearer", "forbidden", "permission", "credential")
 _QUOTA_MARKERS = ("resource_exhausted", "resource exhausted", "rate limit",
                   "rate_limit", "too many requests", "quota", "overloaded",
-                  "overload_error", "capacity", "billing")
+                  "overload_error", "capacity")
+# Money problems: the key/account is dead, no other model of that provider helps.
+_BILLING_MARKERS = ("billing", "payment method", "insufficient credit",
+                    "out of credit", "credit balance", "account suspended",
+                    "arrears", "top up", "top-up")
 _CTX_MARKERS = ("context length", "context_length", "too many tokens",
                 "maximum context", "token limit", "reduce the length",
                 "max_tokens", "request too large")
@@ -278,25 +297,30 @@ _MODEL_MARKERS = ("high demand", "model_not_found", "model not found",
 def classify(status: int, body: str) -> Tuple[str, str]:
     """Map an upstream failure to (kind, reason).
 
-    Only "resource exhausted" and "model unavailable" style failures rotate to
-    another model. Everything the client or the credentials got wrong stops.
+    ROTATE       -> another model of this provider, then the next provider.
+    SKIP_PROVIDER-> this provider is unusable for this request (dead key, no
+                    entitlement, wrong endpoint); go straight to the next one.
+    STOP         -> only the client can fix it (bad request, blocked content).
     """
     low = (body or "").lower()
     if any(m in low for m in _BLOCK_MARKERS):
         return STOP, "content blocked by upstream"
+    if any(m in low for m in _BILLING_MARKERS):
+        return SKIP_PROVIDER, "billing/credit rejected"
     if status in (401, 403) or any(m in low for m in _AUTH_MARKERS):
-        return STOP, f"auth rejected (HTTP {status})"
+        return SKIP_PROVIDER, f"auth/entitlement rejected (HTTP {status})"
     if status == 429 or any(m in low for m in _QUOTA_MARKERS):
         return ROTATE, "resource exhausted"
     if status in (400, 422) and any(m in low for m in _CTX_MARKERS):
         return ROTATE, "context/token limit"
-    if status in (404, 408, 500, 502, 503, 504, 529) or any(m in low for m in _MODEL_MARKERS):
+    if status in (404, 405, 408, 415, 500, 502, 503, 504, 529) or \
+            any(m in low for m in _MODEL_MARKERS):
         return ROTATE, "model unavailable"
     if status in (400, 422):
         return STOP, f"bad request (HTTP {status})"
     if status >= 500:
         return ROTATE, f"upstream HTTP {status}"
-    return STOP, f"HTTP {status}"
+    return SKIP_PROVIDER, f"provider rejected the call (HTTP {status})"
 
 
 def _status_from_error_obj(err: Any) -> int:
@@ -452,18 +476,35 @@ async def _guard_status(cand: Candidate, resp: httpx.Response) -> None:
                         kind, resp.status_code)
 
 
+_ERR_TYPES = ("error", "provider_error", "upstream_error", "api_error")
+_ERR_CODES = ("upstream_error", "error", "billing_error", "invalid_api_key")
+
+
+def _frame_error(cand: Candidate, payload: Dict[str, Any]) -> Optional[Any]:
+    """Aggregators report failures with HTTP 200 in several shapes; catch them all."""
+    if payload.get("error"):
+        return payload.get("error")
+    if payload.get("object") == "error" or payload.get("type") in _ERR_TYPES \
+            or payload.get("code") in _ERR_CODES:
+        return payload
+    return None
+
+
 def _openai_delta(cand: Candidate, payload: Dict[str, Any]) -> str:
     """Pull the text delta out of one OpenAI-shaped SSE frame.
 
     Raises ProviderError for aggregator error frames that arrive with HTTP 200
-    (very common: {"error": {...}} inside a 200 SSE stream).
+    (very common: {"error": {...}} or {"message": ..., "type": "provider_error"}
+    inside a 200 SSE stream).
     """
-    if payload.get("error"):
-        raise _error_from_obj(cand, payload.get("error"), "stream frame error")
-    if payload.get("object") == "error" or payload.get("type") == "error":
-        raise _error_from_obj(cand, payload, "stream frame error")
+    err = _frame_error(cand, payload)
+    if err is not None:
+        raise _error_from_obj(cand, err, "stream frame error")
     choices = payload.get("choices") or []
     if not choices:
+        # No choices + a human-readable message and no usage block = error frame.
+        if isinstance(payload.get("message"), str) and not payload.get("usage"):
+            raise _error_from_obj(cand, payload, "stream frame error")
         return ""  # usage-only / keepalive frame
     ch = choices[0] if isinstance(choices[0], dict) else {}
     for src in (ch.get("delta"), ch.get("message"), ch):
@@ -493,6 +534,8 @@ def _nonstream_text(cand: Candidate, body: str) -> str:
         raise _error_from_obj(cand, data.get("error"), "HTTP 200 error body")
     if isinstance(data, dict) and isinstance(data.get("candidates"), list):
         return _gemini_text(cand, data)
+    if isinstance(data, dict) and not data.get("choices") and isinstance(data.get("message"), str):
+        raise _error_from_obj(cand, data, "HTTP 200 error body")
     choices = (data.get("choices") or []) if isinstance(data, dict) else []
     for ch in choices:
         if not isinstance(ch, dict):
@@ -616,9 +659,10 @@ def _gemini_text(cand: Candidate, resp: Dict[str, Any]) -> str:
     cands = (resp.get("candidates") or []) if isinstance(resp, dict) else []
     if not cands:
         fb = (resp.get("promptFeedback") or {}) if isinstance(resp, dict) else {}
-        reason = fb.get("blockReason") or "no candidates"
-        kind = STOP if reason not in ("MAX_TOKENS",) else ROTATE
-        raise ProviderError(cand, f"blocked/empty response ({reason})", kind)
+        reason = fb.get("blockReason") or ""
+        if reason:
+            raise ProviderError(cand, f"blocked by upstream ({reason})", STOP)
+        raise ProviderError(cand, "no candidates in response", ROTATE)
     parts = ((cands[0].get("content") or {}).get("parts")) or []
     text = "".join(p.get("text", "") for p in parts
                    if isinstance(p, dict) and p.get("text"))
@@ -733,6 +777,8 @@ def _headers(cand: Candidate, rid: str) -> Dict[str, str]:
 
 
 def _failure_report(failures: Dict[str, str], last: Optional[ProviderError]) -> JSONResponse:
+    """Always report a provider outage as 502 — a provider's 401/403/billing
+    failure is not a status the browser should ever see."""
     status = 502
     if last is not None and last.kind == STOP and last.status and 400 <= last.status < 500:
         status = last.status
@@ -749,23 +795,32 @@ def _failure_report(failures: Dict[str, str], last: Optional[ProviderError]) -> 
         status_code=status)
 
 
+def _note(e: ProviderError) -> str:
+    return {"rotate": "rotating", SKIP_PROVIDER: "skipping provider",
+            STOP: "stopping"}.get(e.kind, "rotating")
+
+
 async def _json_route(req: ChatRequest, cid: str, rid: str) -> JSONResponse:
     failures: Dict[str, str] = {}
     last: Optional[ProviderError] = None
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        for cand in build_chain(req):
-            try:
-                text = await _attempt(client, cand, req, rid)
-            except ProviderError as e:
-                last = e
-                failures[cand.label] = _redacted(e.message)
-                logger.warning("[%s] %s failed: %s", rid, cand.label, _redacted(e.message))
-                if e.kind == STOP:
-                    break
-                continue
-            logger.info("[%s] %s answered", rid, cand.label)
-            return JSONResponse(openai_completion(cid, cand.model, text),
-                                headers=_headers(cand, rid))
+        for _provider, cands in build_groups(req):
+            for cand in cands:
+                try:
+                    text = await _attempt(client, cand, req, rid)
+                except ProviderError as e:
+                    last = e
+                    failures[cand.label] = _redacted(e.message)
+                    logger.warning("[%s] %s %s: %s", rid, cand.label, _note(e),
+                                   _redacted(e.message))
+                    if e.kind == STOP:
+                        return _failure_report(failures, e)
+                    if e.kind == SKIP_PROVIDER:
+                        break  # abandon this provider's other models
+                    continue
+                logger.info("[%s] %s answered", rid, cand.label)
+                return JSONResponse(openai_completion(cid, cand.model, text),
+                                    headers=_headers(cand, rid))
     return _failure_report(failures, last)
 
 
@@ -794,26 +849,33 @@ async def _stream_route(req: ChatRequest, cid: str,
     chosen: Optional[Candidate] = None
     gen: Optional[AsyncIterator[str]] = None
     first = ""
-    for cand in build_chain(req):
-        for attempt in range(MAX_RETRIES_PER_PROVIDER + 1):
-            try:
-                gen, first = await _open_first_token(client, cand, req)
-                chosen = cand
+    for _provider, cands in build_groups(req):
+        skip_provider = False
+        for cand in cands:
+            if skip_provider:
                 break
-            except ProviderError as e:
-                last = e
-                failures[cand.label] = _redacted(e.message)
-                # Only network blips are retried in place; quota / model
-                # unavailability rotates to a DIFFERENT model straight away.
-                network = "network error" in e.message
-                logger.warning("[%s] %s %s: %s", rid, cand.label,
-                               "retrying" if network else
-                               ("rotating" if e.kind == ROTATE else "stopping"),
-                               _redacted(e.message))
-                if e.kind == STOP or not network or attempt >= MAX_RETRIES_PER_PROVIDER:
+            for attempt in range(MAX_RETRIES_PER_PROVIDER + 1):
+                try:
+                    gen, first = await _open_first_token(client, cand, req)
+                    chosen = cand
                     break
-                await asyncio.sleep(0.5 * (2 ** attempt))
-        if chosen is not None or (last is not None and last.kind == STOP):
+                except ProviderError as e:
+                    last = e
+                    failures[cand.label] = _redacted(e.message)
+                    # Only network blips are retried in place; quota / model
+                    # unavailability rotates to a DIFFERENT model straight away.
+                    network = "network error" in e.message
+                    logger.warning("[%s] %s %s: %s", rid, cand.label,
+                                   "retrying" if network else _note(e),
+                                   _redacted(e.message))
+                    if e.kind == SKIP_PROVIDER:
+                        skip_provider = True
+                    if e.kind != ROTATE or not network or attempt >= MAX_RETRIES_PER_PROVIDER:
+                        break
+                    await asyncio.sleep(0.5 * (2 ** attempt))
+            if chosen is not None or last is not None and last.kind == STOP:
+                break
+        if chosen is not None or last is not None and last.kind == STOP:
             break
 
     if chosen is None or gen is None:

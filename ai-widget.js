@@ -417,7 +417,7 @@
         if (typeof msg !== 'string') msg = '';
         if (status === 429) return new Error('Sandra. AI is rate limited right now. Please try again in a minute.');
         if (status === 400) return new Error(msg || 'The AI request was rejected.');
-        if (status === 401 || status === 403) return new Error('Sandra. AI is not configured correctly (the provider rejected the key).');
+        if (status === 401 || status === 403) return new Error('Sandra. AI is temporarily unavailable (a provider rejected the request). Please try again shortly.');
         if (status >= 500) return new Error('Every AI model is busy or unavailable right now. Please try again shortly.');
         return new Error('HTTP ' + status + ' ' + String(raw || '').slice(0, 200));
     }
