@@ -263,6 +263,7 @@ async def stream_gemini(client: httpx.AsyncClient, req: ChatRequest,
                         continue
                     try:
                         chunk_data = json.loads(line)
+                        logger.debug("gemini stream chunk: %s", chunk_data)
                         # Extract delta directly from streaming chunk (not full response)
                         text = None
                         cands = chunk_data.get("candidates") or []
@@ -274,6 +275,11 @@ async def stream_gemini(client: httpx.AsyncClient, req: ChatRequest,
                                     break
                         if text:
                             yield openai_chunk(cid, GEMINI_MODEL, text)
+                        else:
+                            # Check if this is the final chunk with finish_reason but no text
+                            cands = chunk_data.get("candidates") or []
+                            if cands and cands[0].get("finishReason"):
+                                logger.debug("finish_reason without text: %s", cands[0].get("finishReason"))
                     except (json.JSONDecodeError, ProviderError):
                         continue
     except (httpx.TimeoutException, httpx.ConnectError) as e:
