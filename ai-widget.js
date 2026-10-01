@@ -217,8 +217,57 @@
     function addUserMessage(text) {
         var d = document.createElement('div');
         d.className = 'ai-msg user';
-        d.textContent = text;
+        var clamp = document.createElement('div');
+        clamp.className = 'ai-user-clamp';
+        var body = document.createElement('div');
+        body.className = 'ai-user-text';
+        body.textContent = text;
+        clamp.appendChild(body);
+        d.appendChild(clamp);
         MSGS.appendChild(d);
+        maybeCollapseUserMessage(d, body);
+        scrollBottom();
+    }
+
+    /* Anything longer than USER_MSG_MAX_LINES gets clamped with a fade and a
+       Show more / Show less toggle pinned under it. The clamp is measured in
+       pixels so it stays exactly N lines whatever the font ends up being. */
+    var USER_MSG_MAX_LINES = 5;
+
+    function maybeCollapseUserMessage(bubble, body) {
+        var style = window.getComputedStyle(body);
+        var lh = parseFloat(style.lineHeight);
+        if (!lh || isNaN(lh)) lh = (parseFloat(style.fontSize) || 14) * 1.55;
+        var limit = Math.round(lh * USER_MSG_MAX_LINES);
+        if (body.scrollHeight <= limit + 1) return;   // 5 lines or fewer, leave it
+
+        bubble.style.setProperty('--ai-user-clamp', limit + 'px');
+
+        var fade = document.createElement('span');
+        fade.className = 'ai-user-fade';
+        fade.setAttribute('aria-hidden', 'true');
+        bubble.querySelector('.ai-user-clamp').appendChild(fade);
+
+        var toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'ai-user-toggle';
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.innerHTML = '<span class="ai-user-toggle-label">Show more</span>' +
+            '<i class="fa-solid fa-chevron-down" aria-hidden="true"></i>';
+        toggle.addEventListener('click', function () { toggleUserMessage(bubble, toggle); });
+        bubble.appendChild(toggle);
+
+        bubble.classList.add('collapsed');
+    }
+
+    function toggleUserMessage(bubble, toggle) {
+        var collapsed = bubble.classList.toggle('collapsed');
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        var label = toggle.querySelector('.ai-user-toggle-label');
+        if (label) label.textContent = collapsed ? 'Show more' : 'Show less';
+        var icon = toggle.querySelector('i');
+        if (icon) icon.className = collapsed
+            ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up';
         scrollBottom();
     }
 

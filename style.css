@@ -1697,6 +1697,62 @@ footer {
     color: #000;
     border-bottom-right-radius: 4px;
     box-shadow: 0 4px 12px rgba(213, 141, 25, 0.25);
+    position: relative;
+}
+
+/* Long pasted / typed messages: clamp to 5 lines with a fade + Show more */
+.ai-user-clamp {
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-msg.user.collapsed .ai-user-clamp {
+    max-height: var(--ai-user-clamp, 7.75em);
+}
+
+.ai-user-fade {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2.4em;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(213, 141, 25, 0), var(--primary-color));
+}
+
+.ai-msg.user.collapsed .ai-user-fade {
+    display: block;
+}
+
+.ai-user-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 7px auto 0;
+    padding: 3px 10px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.12);
+    color: #000;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.ai-user-toggle:hover,
+.ai-user-toggle:focus-visible {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.22);
+    outline: none;
+}
+
+.ai-user-toggle i {
+    font-size: 0.62rem;
 }
 
 .ai-msg.ai {
