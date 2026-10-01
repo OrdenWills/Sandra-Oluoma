@@ -1,7 +1,7 @@
 ﻿/* Sandra. AI — chat configuration (proxy mode; no secrets shipped to the browser).
    proxyEndpoint points at the Render-hosted backend (server/app.py). */
 window.OpenCodeAI = {
-    proxyEndpoint: "https://sandra-ai-backend.onrender.com/v1/chat/completions",
+    proxyEndpoint: "https://sandra-oluoma.onrender.com/v1/chat/completions",
     baseUrl: "",
     model: "nemotron-3-ultra-free",
     apiKey: "",
