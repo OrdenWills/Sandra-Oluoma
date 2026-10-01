@@ -263,6 +263,7 @@ async def stream_gemini(client: httpx.AsyncClient, req: ChatRequest,
                         continue
                     try:
                         chunk_data = json.loads(line)
+                        logger.info("gemini raw stream chunk: %s", chunk_data)
                         # Extract text from streaming chunk - try partial first, then final
                         text = None
                         cands = chunk_data.get("candidates") or []
