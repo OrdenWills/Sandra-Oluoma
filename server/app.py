@@ -99,6 +99,10 @@ MAX_JSON_BODY = 8 * 1024 * 1024  # cap for non-SSE bodies we have to buffer
 
 HTTP_TIMEOUT = httpx.Timeout(connect=10.0, read=90.0, write=15.0, pool=10.0)
 
+# The client is told "sandra-ai" and nothing more. The provider/model that
+# actually answered is for the server log only.
+PUBLIC_MODEL = _env("PUBLIC_MODEL_NAME", default="sandra-ai") or "sandra-ai"
+
 # ---------------------------------------------------------------- logging ---
 
 logger = logging.getLogger("sandra-ai")
@@ -403,20 +407,20 @@ def to_gemini_payload(messages: List[ChatMessage], temperature: float,
     return body
 
 
-def openai_completion(cid: str, model: str, text: str) -> Dict[str, Any]:
+def openai_completion(cid: str, text: str) -> Dict[str, Any]:
     return {
         "id": cid, "object": "chat.completion", "created": int(time.time()),
-        "model": model,
+        "model": PUBLIC_MODEL,
         "choices": [{"index": 0, "message": {"role": "assistant", "content": text},
                      "finish_reason": "stop"}],
     }
 
 
-def openai_chunk(cid: str, model: str, delta: str,
+def openai_chunk(cid: str, delta: str,
                  finish: Optional[str] = None) -> str:
     return "data: " + json.dumps({
         "id": cid, "object": "chat.completion.chunk", "created": int(time.time()),
-        "model": model,
+        "model": PUBLIC_MODEL,
         "choices": [{"index": 0, "delta": {"content": delta} if delta else {},
                      "finish_reason": finish}],
     }) + "\n\n"
@@ -771,9 +775,10 @@ async def chat_completions(req: ChatRequest):
     return await _json_route(req, cid, rid)
 
 
-def _headers(cand: Candidate, rid: str) -> Dict[str, str]:
-    return {"X-Sandra-Provider": cand.provider, "X-Sandra-Model": cand.model,
-            "X-Sandra-Rid": rid}
+def _headers(rid: str) -> Dict[str, str]:
+    """Client-facing headers. The provider and model behind the answer are kept
+    in the server logs only — they are never exposed to the browser."""
+    return {"X-Sandra-Rid": rid}
 
 
 def _failure_report(failures: Dict[str, str], last: Optional[ProviderError]) -> JSONResponse:
@@ -819,8 +824,8 @@ async def _json_route(req: ChatRequest, cid: str, rid: str) -> JSONResponse:
                         break  # abandon this provider's other models
                     continue
                 logger.info("[%s] %s answered", rid, cand.label)
-                return JSONResponse(openai_completion(cid, cand.model, text),
-                                    headers=_headers(cand, rid))
+                return JSONResponse(openai_completion(cid, text),
+                                     headers=_headers(rid))
     return _failure_report(failures, last)
 
 
@@ -887,7 +892,7 @@ async def _stream_route(req: ChatRequest, cid: str,
         _stream_body(client, gen, first, chosen, cid),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
-                 "Connection": "keep-alive", **_headers(chosen, rid)},
+                 "Connection": "keep-alive", **_headers(rid)},
     )
 
 
@@ -896,11 +901,11 @@ async def _stream_body(client: httpx.AsyncClient, gen: AsyncIterator[str],
                        cid: str) -> AsyncIterator[str]:
     """Forward deltas; a failure here can no longer fail over, so just report it."""
     try:
-        yield openai_chunk(cid, cand.model, first)
+        yield openai_chunk(cid, first)
         async for text in gen:
             if text:
-                yield openai_chunk(cid, cand.model, text)
-        yield openai_chunk(cid, cand.model, "", finish="stop")
+                yield openai_chunk(cid, text)
+        yield openai_chunk(cid, "", finish="stop")
         yield "data: [DONE]\n\n"
     except (GeneratorExit, asyncio.CancelledError):
         raise
