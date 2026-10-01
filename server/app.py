@@ -262,11 +262,20 @@ async def stream_gemini(client: httpx.AsyncClient, req: ChatRequest,
                     if not line or line == "[DONE]":
                         continue
                     try:
-                        text = gemini_text(json.loads(line))
+                        chunk_data = json.loads(line)
+                        # Extract delta directly from streaming chunk (not full response)
+                        text = None
+                        cands = chunk_data.get("candidates") or []
+                        if cands:
+                            parts = ((cands[0].get("content") or {}).get("parts")) or []
+                            for p in parts:
+                                if isinstance(p, dict) and p.get("text"):
+                                    text = p.get("text")
+                                    break
+                        if text:
+                            yield openai_chunk(cid, GEMINI_MODEL, text)
                     except (json.JSONDecodeError, ProviderError):
                         continue
-                    if text:
-                        yield openai_chunk(cid, GEMINI_MODEL, text)
     except (httpx.TimeoutException, httpx.ConnectError) as e:
         raise ProviderError("gemini", f"network error: {e}")
     yield openai_chunk(cid, GEMINI_MODEL, "", finish="stop")
