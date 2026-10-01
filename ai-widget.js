@@ -395,7 +395,7 @@
         }).then(function (res) {
             if (!res.ok) {
                 return res.text().catch(function () { return ''; }).then(function (t) {
-                    throw new Error('HTTP ' + res.status + ' ' + t.slice(0, 300));
+                    throw serviceError(res.status, t);
                 });
             }
             return res.json().then(function (data) {
@@ -408,6 +408,20 @@
         });
     }
 
+    function serviceError(status, raw) {
+        var msg = '';
+        try {
+            var d = JSON.parse(raw || '');
+            msg = (d && d.error && d.error.message) || (d && d.detail) || '';
+        } catch (e) { msg = ''; }
+        if (typeof msg !== 'string') msg = '';
+        if (status === 429) return new Error('Sandra. AI is rate limited right now. Please try again in a minute.');
+        if (status === 400) return new Error(msg || 'The AI request was rejected.');
+        if (status === 401 || status === 403) return new Error('Sandra. AI is not configured correctly (the provider rejected the key).');
+        if (status >= 500) return new Error('Every AI model is busy or unavailable right now. Please try again shortly.');
+        return new Error('HTTP ' + status + ' ' + String(raw || '').slice(0, 200));
+    }
+
     function streamRequest(endpoint, headers, body, bubble) {
         return new Promise(function (resolve, reject) {
             bubble.setStatus('Sandra. AI is thinking…');
@@ -418,7 +432,7 @@
             }).then(function (res) {
                 if (!res.ok) {
                     return res.text().catch(function () { return ''; }).then(function (t) {
-                        throw new Error('HTTP ' + res.status + ' ' + t.slice(0, 300));
+                        throw serviceError(res.status, t);
                     });
                 }
                 if (!res.body) {

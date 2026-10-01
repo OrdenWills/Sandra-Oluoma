@@ -1,8 +1,20 @@
 """Sandra AI backend — FastAPI proxy for the LinkedIn Profile Audit widget.
 
-Provider order: CleanAPIs (primary) -> Gemini (failover 1) -> OpenCode (failover 2).
-Each provider is retried (backoff) before failing over to the next.
-Only when ALL providers fail does the request fail (502 + per-provider summary).
+Provider chain: CleanAPIs (primary) -> Gemini (failover 1) -> OpenCode (failover 2).
+The chain is a flat list of (provider, model) *candidates*. A candidate is only
+tried when the previous one could not answer:
+
+  * resource exhausted / quota  -> rotate to the next MODEL, then next provider
+  * model unavailable / 5xx     -> rotate to the next MODEL, then next provider
+  * network error / empty body  -> rotate (re-tried in place only if
+                                   MAX_RETRIES_PER_PROVIDER > 0, default 0)
+  * bad key / bad request / blocked content -> stop, return the error
+
+The moment a candidate produces its FIRST content delta the response starts
+streaming to the client and no other provider is ever contacted. After that
+point failover is impossible (partial text is already delivered), so a failure
+closes the stream with an error frame instead of silently appending a second
+answer.
 
 Exposes an OpenAI-compatible surface the static widget already speaks:
   POST /v1/chat/completions   {model, messages, temperature, max_tokens, stream}
@@ -20,7 +32,8 @@ import os
 import re
 import time
 import uuid
-from typing import Any, AsyncIterator, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
 import httpx
 from dotenv import load_dotenv
@@ -33,22 +46,56 @@ load_dotenv()  # server/.env locally; Render injects env vars directly
 
 # ---------------------------------------------------------------- config ---
 
-CLEAN_API_KEY = (os.getenv("CLEAN_API_KEY") or os.getenv("clean_api_key") or "").strip()
-CLEAN_BASE_URL = os.getenv("CLEAN_BASE_URL", "https://cleanapis.com/v1").strip().rstrip("/")
-CLEAN_MODEL = os.getenv("CLEAN_MODEL", "claude-opus-4.8").strip()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
-OPENCODE_API_KEY = os.getenv("OPENCODE_API_KEY", "").strip()
-OPENCODE_BASE_URL = os.getenv("OPENCODE_BASE_URL", "https://opencode.ai/zen/v1").strip().rstrip("/")
-OPENCODE_MODEL = os.getenv("OPENCODE_MODEL", "nemotron-3-ultra-free").strip()
+def _env(*names: str, default: str = "") -> str:
+    for n in names:
+        v = os.getenv(n)
+        if v is not None and v.strip():
+            return v.strip()
+    return default
+
+
+def _model_list(primary: str, fallbacks: str) -> List[str]:
+    """Primary model first, then comma-separated fallbacks, de-duplicated."""
+    out: List[str] = []
+    for m in [primary] + fallbacks.split(","):
+        m = m.strip()
+        if m and m not in out:
+            out.append(m)
+    return out
+
+
+CLEAN_API_KEY = _env("CLEAN_API_KEY", "clean_api_key")
+CLEAN_BASE_URL = _env("CLEAN_BASE_URL", default="https://cleanapis.com/v1").rstrip("/")
+CLEAN_MODELS = _model_list(_env("CLEAN_MODEL", default="claude-opus-4.8"),
+                           _env("CLEAN_MODEL_FALLBACKS"))
+
+GEMINI_API_KEY = _env("GEMINI_API_KEY")
+GEMINI_BASE_URL = _env("GEMINI_BASE_URL",
+                       default="https://generativelanguage.googleapis.com/v1beta").rstrip("/")
+GEMINI_MODELS = _model_list(_env("GEMINI_MODEL", default="gemini-2.5-flash"),
+                            _env("GEMINI_MODEL_FALLBACKS"))
+
+OPENCODE_API_KEY = _env("OPENCODE_API_KEY")
+OPENCODE_BASE_URL = _env("OPENCODE_BASE_URL", default="https://opencode.ai/zen/v1").rstrip("/")
+OPENCODE_MODELS = _model_list(_env("OPENCODE_MODEL", default="nemotron-3-ultra-free"),
+                              _env("OPENCODE_MODEL_FALLBACKS"))
+
 FRONTEND_ORIGINS = [
     o.strip()
-    for o in os.getenv("FRONTEND_ORIGINS", "https://sandra-chukwuemeka.github.io").split(",")
+    for o in _env("FRONTEND_ORIGINS", default="https://sandra-chukwuemeka.github.io").split(",")
     if o.strip()
 ]
 # Testing convenience: allow any origin. Set to false for a locked-down production.
-CORS_ALLOW_ALL = os.getenv("CORS_ALLOW_ALL_ORIGINS", "true").strip().lower() in ("1", "true", "yes")
-MAX_RETRIES = max(0, int(os.getenv("MAX_RETRIES_PER_PROVIDER", "2") or 2))
+CORS_ALLOW_ALL = _env("CORS_ALLOW_ALL_ORIGINS", default="true").lower() in ("1", "true", "yes")
+
+# Same-candidate retries. 0 = never re-hammer a model that already said
+# "resource exhausted" / "model unavailable" — rotate to the next model instead.
+MAX_RETRIES_PER_PROVIDER = max(0, int(_env("MAX_RETRIES_PER_PROVIDER", default="0") or 0))
+# How long to wait for a candidate's first content delta before rotating.
+FIRST_TOKEN_TIMEOUT = float(_env("FIRST_TOKEN_TIMEOUT", default="60") or 60)
+MAX_ERROR_BODY = 4096          # bytes of upstream error text kept for logs
+MAX_JSON_BODY = 8 * 1024 * 1024  # cap for non-SSE bodies we have to buffer
+
 HTTP_TIMEOUT = httpx.Timeout(connect=10.0, read=90.0, write=15.0, pool=10.0)
 
 # ---------------------------------------------------------------- logging ---
@@ -63,7 +110,7 @@ logger.propagate = False
 
 # ------------------------------------------------------------------ app ---
 
-app = FastAPI(title="Sandra AI backend", version="1.0.0")
+app = FastAPI(title="Sandra AI backend", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -109,16 +156,98 @@ class ChatRequest(BaseModel):
     tool_choice: Optional[Any] = None
 
 
+# ------------------------------------------------------- candidate chain ---
+
+@dataclass(frozen=True)
+class Candidate:
+    provider: str
+    model: str
+    kind: str        # "openai" (OpenAI-compatible) | "gemini"
+    base_url: str
+    api_key: str
+
+    @property
+    def label(self) -> str:
+        return f"{self.provider}/{self.model}"
+
+
+REGISTRY: Dict[str, Dict[str, Any]] = {
+    "cleanapis": {"key": CLEAN_API_KEY, "base": CLEAN_BASE_URL,
+                  "models": CLEAN_MODELS, "kind": "openai"},
+    "gemini": {"key": GEMINI_API_KEY, "base": GEMINI_BASE_URL,
+               "models": GEMINI_MODELS, "kind": "gemini"},
+    "opencode": {"key": OPENCODE_API_KEY, "base": OPENCODE_BASE_URL,
+                 "models": OPENCODE_MODELS, "kind": "openai"},
+}
+DEFAULT_ORDER = ["cleanapis", "gemini", "opencode"]
+
+
+def _pinned_model(provider: str, hint: str) -> Optional[str]:
+    """The client may pin a model; only honour it on providers that serve it."""
+    low = hint.lower()
+    if not hint:
+        return None
+    if provider == "gemini":
+        return hint if "gemini" in low else None
+    if provider == "opencode":
+        return hint if ("nemotron" in low or "opencode" in low) else None
+    # cleanapis fronts the general OpenAI-compatible catalogue
+    if any(k in low for k in ("gemini", "nemotron", "opencode")):
+        return None
+    return hint
+
+
+def build_chain(req: ChatRequest) -> List[Candidate]:
+    """Ordered (provider, model) candidates. Unconfigured providers are skipped."""
+    hint = (req.model or "").strip()
+    order = list(DEFAULT_ORDER)
+    if "gemini" in hint.lower():
+        order = ["gemini", "cleanapis", "opencode"]
+    chain: List[Candidate] = []
+    for name in order:
+        p = REGISTRY[name]
+        if not p["key"]:
+            continue
+        models: List[str] = []
+        pinned = _pinned_model(name, hint)
+        if pinned:
+            models.append(pinned)
+        models.extend(p["models"])
+        seen = set()
+        for m in models:
+            m = m.strip()
+            if not m or m in seen:
+                continue
+            seen.add(m)
+            chain.append(Candidate(name, m, p["kind"], p["base"], p["key"]))
+    return chain
+
+
 # ---------------------------------------------------------------- errors ---
 
-class ProviderError(Exception):
-    """Raised when a provider call fails. retryable=False means don't retry
-    this provider (e.g. bad key / bad request) — fail over immediately."""
+ROTATE = "rotate"   # try the next model / provider
+STOP = "stop"       # terminal: another model cannot help
 
-    def __init__(self, provider: str, message: str, retryable: bool = True):
+
+class ProviderError(Exception):
+    """A candidate could not produce an answer.
+
+    kind=ROTATE -> move on to the next candidate.
+    kind=STOP   -> abort the chain and surface the error to the client.
+    """
+
+    def __init__(self, cand: Any, message: str, kind: str = ROTATE,
+                 status: Optional[int] = None):
+        label = cand.label if isinstance(cand, Candidate) else str(cand)
         super().__init__(message)
-        self.provider = provider
-        self.retryable = retryable
+        self.cand = cand
+        self.label = label
+        self.message = message
+        self.kind = kind
+        self.status = status
+
+    def __str__(self) -> str:
+        return f"{self.label}: {self.message}"
 
 
 def _redacted(msg: str) -> str:
@@ -127,6 +256,65 @@ def _redacted(msg: str) -> str:
         if secret and len(secret) > 8 and secret in msg:
             msg = msg.replace(secret, secret[:4] + "…[redacted]")
     return msg[:600]
+
+
+# Error-body fingerprints. Order matters: the first family that matches wins.
+_BLOCK_MARKERS = ("safety", "blocked", "blocklist", "content_policy",
+                  "prohibited_content", "recitation", "responsible_ai")
+_AUTH_MARKERS = ("api key", "api_key", "unauthorized", "authentication",
+                 "invalid bearer", "forbidden", "permission", "credential")
+_QUOTA_MARKERS = ("resource_exhausted", "resource exhausted", "rate limit",
+                  "rate_limit", "too many requests", "quota", "overloaded",
+                  "overload_error", "capacity", "billing")
+_CTX_MARKERS = ("context length", "context_length", "too many tokens",
+                "maximum context", "token limit", "reduce the length",
+                "max_tokens", "request too large")
+_MODEL_MARKERS = ("high demand", "model_not_found", "model not found",
+                  "no such model", "not available", "unavailable",
+                  "does not exist", "invalid model", "unknown model",
+                  "not supported", "deployment", "not enabled", "temporarily")
+
+
+def classify(status: int, body: str) -> Tuple[str, str]:
+    """Map an upstream failure to (kind, reason).
+
+    Only "resource exhausted" and "model unavailable" style failures rotate to
+    another model. Everything the client or the credentials got wrong stops.
+    """
+    low = (body or "").lower()
+    if any(m in low for m in _BLOCK_MARKERS):
+        return STOP, "content blocked by upstream"
+    if status in (401, 403) or any(m in low for m in _AUTH_MARKERS):
+        return STOP, f"auth rejected (HTTP {status})"
+    if status == 429 or any(m in low for m in _QUOTA_MARKERS):
+        return ROTATE, "resource exhausted"
+    if status in (400, 422) and any(m in low for m in _CTX_MARKERS):
+        return ROTATE, "context/token limit"
+    if status in (404, 408, 500, 502, 503, 504, 529) or any(m in low for m in _MODEL_MARKERS):
+        return ROTATE, "model unavailable"
+    if status in (400, 422):
+        return STOP, f"bad request (HTTP {status})"
+    if status >= 500:
+        return ROTATE, f"upstream HTTP {status}"
+    return STOP, f"HTTP {status}"
+
+
+def _status_from_error_obj(err: Any) -> int:
+    if isinstance(err, dict):
+        for k in ("code", "status_code", "http_status"):
+            v = err.get(k)
+            if isinstance(v, int):
+                return v
+        st = err.get("status")
+        if isinstance(st, str) and st.isdigit():
+            return int(st)
+    return 200
+
+
+def _error_from_obj(cand: Candidate, err: Any, where: str) -> ProviderError:
+    body = json.dumps(err) if not isinstance(err, str) else err
+    kind, reason = classify(_status_from_error_obj(err), body)
+    return ProviderError(cand, f"{where}: {reason} — {_redacted(body)}", kind)
 
 
 # ------------------------------------------------- message conversion ---
@@ -191,22 +379,6 @@ def to_gemini_payload(messages: List[ChatMessage], temperature: float,
     return body
 
 
-def gemini_text(resp: Dict[str, Any]) -> str:
-    cands = resp.get("candidates") or []
-    if not cands:
-        fb = resp.get("promptFeedback") or {}
-        reason = fb.get("blockReason") or "no candidates"
-        raise ProviderError("gemini", f"blocked/empty response ({reason})",
-                            retryable=False)
-    parts = ((cands[0].get("content") or {}).get("parts")) or []
-    text = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
-    if not text:
-        finish = cands[0].get("finishReason", "unknown")
-        raise ProviderError("gemini", f"empty text (finish={finish})",
-                            retryable=False)
-    return text
-
-
 def openai_completion(cid: str, model: str, text: str) -> Dict[str, Any]:
     return {
         "id": cid, "object": "chat.completion", "created": int(time.time()),
@@ -226,314 +398,294 @@ def openai_chunk(cid: str, model: str, delta: str,
     }) + "\n\n"
 
 
+def sse_error(message: str) -> str:
+    return "data: " + json.dumps(
+        {"error": {"message": _redacted(message), "type": "provider_error"}}) + "\n\n"
+
+
+# ------------------------------------------------------- SSE / body IO ---
+
+_SPLIT_RE = re.compile(r"\r\n\r\n|\n\n")
+
+
+def _event_data(event: str) -> List[str]:
+    out: List[str] = []
+    for line in event.splitlines():
+        line = line.strip()
+        if line.startswith("data:"):
+            out.append(line[5:].strip())
+    return out
+
+
+async def _sse_data(resp: httpx.Response) -> AsyncIterator[str]:
+    """Yield the `data:` payload of each SSE event (CRLF or LF delimited)."""
+    buf = ""
+    async for raw in resp.aiter_text():
+        buf += raw
+        while True:
+            m = _SPLIT_RE.search(buf)
+            if not m:
+                break
+            event = buf[:m.start()]
+            buf = buf[m.end():]
+            for d in _event_data(event):
+                yield d
+    for d in _event_data(buf):
+        yield d
+
+
+async def _read_body(resp: httpx.Response, limit: int = MAX_ERROR_BODY) -> str:
+    try:
+        raw = await resp.aread()
+    except httpx.HTTPError:
+        return ""
+    return raw[:limit].decode("utf-8", "replace")
+
+
+async def _guard_status(cand: Candidate, resp: httpx.Response) -> None:
+    """Raise a classified ProviderError for any non-200 upstream response."""
+    if resp.status_code == 200:
+        return
+    body = await _read_body(resp)
+    kind, reason = classify(resp.status_code, body)
+    raise ProviderError(cand, f"HTTP {resp.status_code} {reason} — {_redacted(body)}",
+                        kind, resp.status_code)
+
+
+def _openai_delta(cand: Candidate, payload: Dict[str, Any]) -> str:
+    """Pull the text delta out of one OpenAI-shaped SSE frame.
+
+    Raises ProviderError for aggregator error frames that arrive with HTTP 200
+    (very common: {"error": {...}} inside a 200 SSE stream).
+    """
+    if payload.get("error"):
+        raise _error_from_obj(cand, payload.get("error"), "stream frame error")
+    if payload.get("object") == "error" or payload.get("type") == "error":
+        raise _error_from_obj(cand, payload, "stream frame error")
+    choices = payload.get("choices") or []
+    if not choices:
+        return ""  # usage-only / keepalive frame
+    ch = choices[0] if isinstance(choices[0], dict) else {}
+    for src in (ch.get("delta"), ch.get("message"), ch):
+        if not isinstance(src, dict):
+            continue
+        content = src.get("content")
+        if isinstance(content, str) and content:
+            return content
+        if isinstance(content, list):  # content parts
+            text = "".join(str(p.get("text", "")) for p in content
+                           if isinstance(p, dict) and p.get("text"))
+            if text:
+                return text
+    return ""
+
+
+def _nonstream_text(cand: Candidate, body: str) -> str:
+    """Extract text from a buffered (non-SSE) body, error or nothing."""
+    stripped = (body or "").strip()
+    if not stripped:
+        raise ProviderError(cand, "empty response body", ROTATE)
+    try:
+        data = json.loads(stripped)
+    except json.JSONDecodeError:
+        return stripped  # plain text answer
+    if isinstance(data, dict) and data.get("error"):
+        raise _error_from_obj(cand, data.get("error"), "HTTP 200 error body")
+    if isinstance(data, dict) and isinstance(data.get("candidates"), list):
+        return _gemini_text(cand, data)
+    choices = (data.get("choices") or []) if isinstance(data, dict) else []
+    for ch in choices:
+        if not isinstance(ch, dict):
+            continue
+        for src in (ch.get("message"), ch.get("delta"), ch):
+            if isinstance(src, dict):
+                text = src.get("content")
+                if isinstance(text, str) and text:
+                    return text
+    raise ProviderError(cand, "no content in HTTP 200 response body", ROTATE)
+
+
 # ------------------------------------------------------------ providers ---
 
-async def call_gemini(client: httpx.AsyncClient, req: ChatRequest) -> str:
-    if not GEMINI_API_KEY:
-        raise ProviderError("gemini", "GEMINI_API_KEY not configured",
-                            retryable=False)
-    model = req.model if (req.model and "gemini" in req.model.lower()) else GEMINI_MODEL
-    url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"{model}:generateContent")
-    try:
-        r = await client.post(
-            url, headers={"x-goog-api-key": GEMINI_API_KEY,
-                          "Content-Type": "application/json"},
-            json=to_gemini_payload(req.messages, req.temperature, req.max_tokens),
-        )
-    except (httpx.TimeoutException, httpx.ConnectError) as e:
-        raise ProviderError("gemini", f"network error: {e}")
-    if r.status_code == 429 or r.status_code >= 500:
-        raise ProviderError("gemini", f"HTTP {r.status_code}: {_redacted(r.text)}")
-    if r.status_code != 200:
-        raise ProviderError("gemini", f"HTTP {r.status_code}: {_redacted(r.text)}",
-                            retryable=False)
-    return gemini_text(r.json())
-
-
-async def stream_gemini(client: httpx.AsyncClient, req: ChatRequest,
-                        cid: str) -> AsyncIterator[str]:
-    """Yield OpenAI-style SSE chunks translated from Gemini's SSE stream."""
-    if not GEMINI_API_KEY:
-        raise ProviderError("gemini", "GEMINI_API_KEY not configured",
-                            retryable=False)
-    model = req.model if (req.model and "gemini" in req.model.lower()) else GEMINI_MODEL
-    url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"{model}:streamGenerateContent?alt=sse")
-
-    def _extract_chunk_text(chunk_data: Dict[str, Any]) -> Optional[str]:
-        cands = chunk_data.get("candidates") or []
-        if not cands:
-            return None
-        parts = ((cands[0].get("content") or {}).get("parts")) or []
-        text_pieces = [
-            p.get("text", "") for p in parts
-            if isinstance(p, dict) and p.get("text") and not p.get("thought")
-        ]
-        if text_pieces:
-            return "".join(text_pieces)
-        content = cands[0].get("content")
-        if isinstance(content, str) and content.strip():
-            return content
-        if isinstance(content, dict) and content.get("text"):
-            return content.get("text")
-        return None
-
-    try:
-        async with client.stream(
-            "POST", url,
-            headers={"x-goog-api-key": GEMINI_API_KEY,
-                     "Content-Type": "application/json",
-                     "Accept": "text/event-stream"},
-            json=to_gemini_payload(req.messages, req.temperature, req.max_tokens),
-        ) as r:
-            if r.status_code == 429 or r.status_code >= 500:
-                body = await r.aread()
-                raise ProviderError(
-                    "gemini", f"HTTP {r.status_code}: {_redacted(body.decode(errors='ignore'))}")
-            if r.status_code != 200:
-                body = await r.aread()
-                raise ProviderError(
-                    "gemini", f"HTTP {r.status_code}: {_redacted(body.decode(errors='ignore'))}",
-                    retryable=False)
-            buf = ""
-            async for raw in r.aiter_text():
-                buf += raw
-                while True:
-                    m = re.search(r"\r\n\r\n|\n\n", buf)
-                    if not m:
-                        break
-                    event = buf[:m.start()]
-                    buf = buf[m.end():]
-                    for line in event.splitlines():
-                        line = line.strip()
-                        if not line.startswith("data:"):
-                            continue
-                        data_str = line[5:].strip()
-                        if not data_str or data_str == "[DONE]":
-                            continue
-                        try:
-                            chunk_data = json.loads(data_str)
-                            text = _extract_chunk_text(chunk_data)
-                            if text:
-                                yield openai_chunk(cid, model, text)
-                        except (json.JSONDecodeError, ProviderError):
-                            continue
-
-            if buf.strip():
-                for line in buf.splitlines():
-                    line = line.strip()
-                    if line.startswith("data:"):
-                        data_str = line[5:].strip()
-                        if data_str and data_str != "[DONE]":
-                            try:
-                                chunk_data = json.loads(data_str)
-                                text = _extract_chunk_text(chunk_data)
-                                if text:
-                                    yield openai_chunk(cid, model, text)
-                            except (json.JSONDecodeError, ProviderError):
-                                pass
-
-    except (httpx.TimeoutException, httpx.ConnectError) as e:
-        raise ProviderError("gemini", f"network error: {e}")
-    yield openai_chunk(cid, model, "", finish="stop")
-    yield "data: [DONE]\n\n"
-
-
-async def call_cleanapis(client: httpx.AsyncClient, req: ChatRequest) -> str:
-    if not CLEAN_API_KEY:
-        raise ProviderError("cleanapis", "CLEAN_API_KEY not configured",
-                            retryable=False)
-    model = req.model if (req.model and not any(k in req.model.lower() for k in ("gemini", "nemotron"))) else CLEAN_MODEL
-    max_tokens = max(2048, min(16384, req.max_tokens or 4096))
+def _openai_payload(cand: Candidate, req: ChatRequest, stream: bool,
+                    max_tokens: int) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
-        "model": model,
+        "model": cand.model,
         "messages": to_openai_messages(req.messages),
         "temperature": max(0.0, min(2.0, req.temperature)),
         "max_tokens": max_tokens,
-        "stream": False,
+        "stream": stream,
     }
     if req.tools:
         payload["tools"] = req.tools
     if req.tool_choice:
         payload["tool_choice"] = req.tool_choice
+    return payload
+
+
+def _clamp_openai_tokens(cand: Candidate, req: ChatRequest) -> int:
+    if cand.model.startswith("gemini"):
+        return max(1, min(8192, req.max_tokens or 4096))
+    return max(2048, min(16384, req.max_tokens or 4096))
+
+
+async def stream_candidate(client: httpx.AsyncClient, cand: Candidate,
+                           req: ChatRequest) -> AsyncIterator[str]:
+    """Yield raw text deltas from one candidate. Raises ProviderError otherwise."""
+    if cand.kind == "gemini":
+        url = f"{cand.base_url}/models/{cand.model}:streamGenerateContent?alt=sse"
+        headers = {"x-goog-api-key": cand.api_key, "Content-Type": "application/json",
+                   "Accept": "text/event-stream"}
+        json_body: Dict[str, Any] = to_gemini_payload(req.messages, req.temperature,
+                                                      req.max_tokens)
+    else:
+        url = f"{cand.base_url}/chat/completions"
+        headers = {"Content-Type": "application/json",
+                   "Authorization": f"Bearer {cand.api_key}",
+                   "Accept": "text/event-stream"}
+        json_body = _openai_payload(cand, req, True, _clamp_openai_tokens(cand, req))
 
     try:
-        r = await client.post(
-            f"{CLEAN_BASE_URL}/chat/completions",
-            headers={"Content-Type": "application/json",
-                     "Authorization": f"Bearer {CLEAN_API_KEY}"},
-            json=payload,
-        )
-    except (httpx.TimeoutException, httpx.ConnectError) as e:
-        raise ProviderError("cleanapis", f"network error: {e}")
-    if r.status_code == 429 or r.status_code >= 500:
-        raise ProviderError("cleanapis", f"HTTP {r.status_code}: {_redacted(r.text)}")
-    if r.status_code != 200:
-        raise ProviderError("cleanapis", f"HTTP {r.status_code}: {_redacted(r.text)}",
-                            retryable=False)
+        request = client.build_request("POST", url, headers=headers, json=json_body)
+        resp = await client.send(request, stream=True)
+    except httpx.HTTPError as e:
+        raise ProviderError(cand, f"network error: {type(e).__name__}: {e}",
+                            ROTATE, None)
+
     try:
-        data = r.json()
-        if "error" in data:
-            raise ProviderError("cleanapis", f"API error: {data['error']}", retryable=False)
-        msg = ((data.get("choices") or [{}])[0].get("message")) or {}
-        text = msg.get("content") or ""
-    except (ValueError, AttributeError, IndexError) as e:
-        raise ProviderError("cleanapis", f"unexpected response shape: {e}",
-                            retryable=False)
-    if not text.strip():
-        raise ProviderError("cleanapis", "empty completion", retryable=False)
+        await _guard_status(cand, resp)
+        ctype = (resp.headers.get("content-type") or "").lower()
+        if "text/event-stream" not in ctype:
+            # Some gateways answer a stream request with one JSON document.
+            yield _nonstream_text(cand, await _read_body(resp, MAX_JSON_BODY))
+            return
+        async for data in _sse_data(resp):
+            if not data or data == "[DONE]":
+                if data == "[DONE]":
+                    return
+                continue
+            try:
+                payload = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(payload, dict):
+                continue
+            if cand.kind == "gemini":
+                text = _gemini_delta(cand, payload)
+            else:
+                text = _openai_delta(cand, payload)
+            if text:
+                yield text
+    except ProviderError:
+        raise
+    except httpx.HTTPError as e:
+        raise ProviderError(cand, f"network error: {type(e).__name__}: {e}", ROTATE, None)
+    finally:
+        await resp.aclose()
+
+
+async def call_candidate(client: httpx.AsyncClient, cand: Candidate,
+                         req: ChatRequest) -> str:
+    """One-shot (non-streaming) completion from a single candidate."""
+    if cand.kind == "gemini":
+        url = f"{cand.base_url}/models/{cand.model}:generateContent"
+        headers = {"x-goog-api-key": cand.api_key, "Content-Type": "application/json"}
+        json_body = to_gemini_payload(req.messages, req.temperature, req.max_tokens)
+    else:
+        url = f"{cand.base_url}/chat/completions"
+        headers = {"Content-Type": "application/json",
+                   "Authorization": f"Bearer {cand.api_key}"}
+        json_body = _openai_payload(cand, req, False, _clamp_openai_tokens(cand, req))
+
+    try:
+        r = await client.post(url, headers=headers, json=json_body)
+    except httpx.HTTPError as e:
+        raise ProviderError(cand, f"network error: {type(e).__name__}: {e}", ROTATE, None)
+    await _guard_status(cand, r)  # reads the body on failure
+    if cand.kind == "gemini":
+        try:
+            return _gemini_text(cand, r.json())
+        except ValueError as e:
+            raise ProviderError(cand, f"unexpected response shape: {e}", ROTATE)
+    return _nonstream_text(cand, r.text)
+
+
+def _gemini_text(cand: Candidate, resp: Dict[str, Any]) -> str:
+    if isinstance(resp, dict) and resp.get("error"):
+        raise _error_from_obj(cand, resp.get("error"), "HTTP 200 error body")
+    cands = (resp.get("candidates") or []) if isinstance(resp, dict) else []
+    if not cands:
+        fb = (resp.get("promptFeedback") or {}) if isinstance(resp, dict) else {}
+        reason = fb.get("blockReason") or "no candidates"
+        kind = STOP if reason not in ("MAX_TOKENS",) else ROTATE
+        raise ProviderError(cand, f"blocked/empty response ({reason})", kind)
+    parts = ((cands[0].get("content") or {}).get("parts")) or []
+    text = "".join(p.get("text", "") for p in parts
+                   if isinstance(p, dict) and p.get("text"))
+    if not text:
+        finish = cands[0].get("finishReason", "unknown")
+        kind = STOP if str(finish).upper().startswith(("SAFETY", "PROHIBITED", "BLOCKLIST", "SPII", "RECITATION")) else ROTATE
+        raise ProviderError(cand, f"empty text (finish={finish})", kind)
     return text
 
 
-async def stream_cleanapis(client: httpx.AsyncClient, req: ChatRequest,
-                           cid: str) -> AsyncIterator[str]:
-    """Pass CleanAPIs SSE stream through, supporting reasoning models and keepalive."""
-    if not CLEAN_API_KEY:
-        raise ProviderError("cleanapis", "CLEAN_API_KEY not configured",
-                            retryable=False)
-    model = req.model if (req.model and not any(k in req.model.lower() for k in ("gemini", "nemotron"))) else CLEAN_MODEL
-    max_tokens = max(2048, min(16384, req.max_tokens or 4096))
-    payload: Dict[str, Any] = {
-        "model": model,
-        "messages": to_openai_messages(req.messages),
-        "temperature": max(0.0, min(2.0, req.temperature)),
-        "max_tokens": max_tokens,
-        "stream": True,
-    }
-    if req.tools:
-        payload["tools"] = req.tools
-    if req.tool_choice:
-        payload["tool_choice"] = req.tool_choice
-
-    try:
-        async with client.stream(
-            "POST", f"{CLEAN_BASE_URL}/chat/completions",
-            headers={"Content-Type": "application/json",
-                     "Authorization": f"Bearer {CLEAN_API_KEY}",
-                     "Accept": "text/event-stream"},
-            json=payload,
-        ) as r:
-            if r.status_code == 429 or r.status_code >= 500:
-                body = await r.aread()
-                raise ProviderError(
-                    "cleanapis", f"HTTP {r.status_code}: {_redacted(body.decode(errors='ignore'))}")
-            if r.status_code != 200:
-                body = await r.aread()
-                raise ProviderError(
-                    "cleanapis",
-                    f"HTTP {r.status_code}: {_redacted(body.decode(errors='ignore'))}",
-                    retryable=False)
-            async for raw in r.aiter_text():
-                # Forward chunks verbatim
-                yield raw
-    except (httpx.TimeoutException, httpx.ConnectError) as e:
-        raise ProviderError("cleanapis", f"network error: {e}")
-
-
-async def call_opencode(client: httpx.AsyncClient, req: ChatRequest) -> str:
-    if not OPENCODE_API_KEY:
-        raise ProviderError("opencode", "OPENCODE_API_KEY not configured",
-                            retryable=False)
-    model = req.model if (req.model and "nemotron" in req.model.lower()) else OPENCODE_MODEL
-    payload: Dict[str, Any] = {
-        "model": model,
-        "messages": to_openai_messages(req.messages),
-        "temperature": max(0.0, min(2.0, req.temperature)),
-        "max_tokens": max(1, min(8192, req.max_tokens)),
-        "stream": False,
-    }
-    if req.tools:
-        payload["tools"] = req.tools
-    if req.tool_choice:
-        payload["tool_choice"] = req.tool_choice
-    try:
-        r = await client.post(
-            f"{OPENCODE_BASE_URL}/chat/completions",
-            headers={"Content-Type": "application/json",
-                     "Authorization": f"Bearer {OPENCODE_API_KEY}"},
-            json=payload,
-        )
-    except (httpx.TimeoutException, httpx.ConnectError) as e:
-        raise ProviderError("opencode", f"network error: {e}")
-    if r.status_code == 429 or r.status_code >= 500:
-        raise ProviderError("opencode", f"HTTP {r.status_code}: {_redacted(r.text)}")
-    if r.status_code != 200:
-        raise ProviderError("opencode", f"HTTP {r.status_code}: {_redacted(r.text)}",
-                            retryable=False)
-    try:
-        data = r.json()
-        text = (((data.get("choices") or [{}])[0].get("message")) or {}).get("content") or ""
-    except (ValueError, AttributeError, IndexError):
-        raise ProviderError("opencode", "unexpected response shape",
-                            retryable=False)
-    if not text.strip():
-        raise ProviderError("opencode", "empty completion", retryable=False)
-    return text
-
-
-async def stream_opencode(client: httpx.AsyncClient, req: ChatRequest,
-                          cid: str) -> AsyncIterator[str]:
-    """Pass the upstream OpenAI-style SSE through, normalising the ending."""
-    if not OPENCODE_API_KEY:
-        raise ProviderError("opencode", "OPENCODE_API_KEY not configured",
-                            retryable=False)
-    model = req.model if (req.model and "nemotron" in req.model.lower()) else OPENCODE_MODEL
-    payload: Dict[str, Any] = {
-        "model": model,
-        "messages": to_openai_messages(req.messages),
-        "temperature": max(0.0, min(2.0, req.temperature)),
-        "max_tokens": max(1, min(8192, req.max_tokens)),
-        "stream": True,
-    }
-    if req.tools:
-        payload["tools"] = req.tools
-    if req.tool_choice:
-        payload["tool_choice"] = req.tool_choice
-    try:
-        async with client.stream(
-            "POST", f"{OPENCODE_BASE_URL}/chat/completions",
-            headers={"Content-Type": "application/json",
-                     "Authorization": f"Bearer {OPENCODE_API_KEY}",
-                     "Accept": "text/event-stream"},
-            json=payload,
-        ) as r:
-            if r.status_code == 429 or r.status_code >= 500:
-                body = await r.aread()
-                raise ProviderError(
-                    "opencode", f"HTTP {r.status_code}: {_redacted(body.decode(errors='ignore'))}")
-            if r.status_code != 200:
-                body = await r.aread()
-                raise ProviderError(
-                    "opencode",
-                    f"HTTP {r.status_code}: {_redacted(body.decode(errors='ignore'))}",
-                    retryable=False)
-            async for raw in r.aiter_text():
-                # Upstream is already OpenAI SSE — forward verbatim.
-                yield raw
-    except (httpx.TimeoutException, httpx.ConnectError) as e:
-        raise ProviderError("opencode", f"network error: {e}")
-    yield "data: [DONE]\n\n"
+def _gemini_delta(cand: Candidate, chunk: Dict[str, Any]) -> str:
+    if chunk.get("error"):
+        raise _error_from_obj(cand, chunk.get("error"), "stream frame error")
+    cands = chunk.get("candidates") or []
+    if not cands:
+        return ""
+    finish = str(cands[0].get("finishReason") or "")
+    if finish.upper().startswith(("SAFETY", "PROHIBITED", "BLOCKLIST", "SPII", "RECITATION")):
+        raise ProviderError(cand, f"content blocked by upstream ({finish})", STOP)
+    parts = ((cands[0].get("content") or {}).get("parts")) or []
+    text = "".join(str(p.get("text", "")) for p in parts
+                   if isinstance(p, dict) and p.get("text") and not p.get("thought"))
+    if text:
+        return text
+    content = cands[0].get("content")
+    if isinstance(content, str) and content.strip():
+        return content
+    if isinstance(content, dict) and content.get("text"):
+        return str(content.get("text"))
+    return ""
 
 
 # ------------------------------------------------- retry + failover ---
 
-async def _with_retries(label: str, fn, *args):
-    """Run one provider with backoff. Returns (result) or raises the LAST
-    ProviderError after retries are exhausted."""
-    last: Optional[ProviderError] = None
-    for attempt in range(MAX_RETRIES + 1):
-        try:
-            return await fn(*args)
-        except ProviderError as e:
-            last = e
-            logger.warning("[%s] attempt %d/%d failed: %s", label, attempt + 1,
-                           MAX_RETRIES + 1, _redacted(str(e)))
-            if not e.retryable or attempt >= MAX_RETRIES:
-                break
-            await asyncio.sleep(0.5 * (2 ** attempt))
-    assert last is not None
-    raise last
+async def _open_first_token(client: httpx.AsyncClient, cand: Candidate,
+                            req: ChatRequest) -> Tuple[AsyncIterator[str], str]:
+    """Start a candidate and wait for its first text delta.
+
+    Raises ProviderError when the candidate cannot deliver one, so the caller can
+    rotate to the next model *before* a single byte reaches the client.
+    """
+    gen = stream_candidate(client, cand, req)
+    try:
+        first = await asyncio.wait_for(gen.__anext__(), timeout=FIRST_TOKEN_TIMEOUT)
+    except StopAsyncIteration:
+        await _aclose(gen)
+        raise ProviderError(cand, "stream ended with no content", ROTATE)
+    except asyncio.TimeoutError:
+        await _aclose(gen)
+        raise ProviderError(cand, f"no first token within {FIRST_TOKEN_TIMEOUT:.0f}s",
+                            ROTATE)
+    except BaseException:
+        await _aclose(gen)
+        raise
+    if not first:
+        await _aclose(gen)
+        raise ProviderError(cand, "first chunk was empty", ROTATE)
+    return gen, first
+
+
+async def _aclose(gen) -> None:
+    try:
+        await gen.aclose()
+    except (RuntimeError, StopAsyncIteration, GeneratorExit, asyncio.CancelledError):
+        pass
+    except Exception:  # pragma: no cover - best effort cleanup
+        logger.debug("aclose failed", exc_info=True)
 
 
 # --------------------------------------------------------------- routes ---
@@ -541,91 +693,164 @@ async def _with_retries(label: str, fn, *args):
 @app.get("/")
 async def root():
     return {"service": "sandra-ai-backend", "status": "ok",
-            "providers": ["cleanapis", "gemini", "opencode"],
+            "providers": list(DEFAULT_ORDER),
             "docs": "POST /v1/chat/completions with {messages, model?, temperature?, max_tokens?, stream?}"}
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok",
-            "providers": ["cleanapis", "gemini", "opencode"],
-            "cleanapis": {"configured": bool(CLEAN_API_KEY), "model": CLEAN_MODEL,
-                          "base_url": CLEAN_BASE_URL},
-            "gemini": {"configured": bool(GEMINI_API_KEY), "model": GEMINI_MODEL},
-            "opencode": {"configured": bool(OPENCODE_API_KEY), "model": OPENCODE_MODEL,
-                         "base_url": OPENCODE_BASE_URL},
-            "cors_allow_all": CORS_ALLOW_ALL,
-            "cors_origins": FRONTEND_ORIGINS}
+    return {
+        "status": "ok",
+        "chain": [f"{name}/{m}" for name in DEFAULT_ORDER
+                  for m in REGISTRY[name]["models"] if REGISTRY[name]["key"]],
+        "providers": {
+            name: {"configured": bool(REGISTRY[name]["key"]),
+                   "base_url": REGISTRY[name]["base"],
+                   "models": REGISTRY[name]["models"]}
+            for name in DEFAULT_ORDER
+        },
+        "max_retries_per_candidate": MAX_RETRIES_PER_PROVIDER,
+        "first_token_timeout": FIRST_TOKEN_TIMEOUT,
+        "cors_allow_all": CORS_ALLOW_ALL,
+        "cors_origins": FRONTEND_ORIGINS,
+    }
 
 
 @app.post("/v1/chat/completions")
-async def chat_completions(req: ChatRequest, request: Request):
+async def chat_completions(req: ChatRequest):
     if not req.messages:
         raise HTTPException(status_code=400, detail="messages is required")
     cid = "chatcmpl-" + uuid.uuid4().hex[:12]
-    failures: Dict[str, str] = {}
-
+    rid = uuid.uuid4().hex[:8]
     if req.stream:
-        # Streaming: first provider that yields a first byte wins; if it
-        # fails BEFORE any byte is sent, fail over to the next provider.
-        # NOTE: the HTTP client must live inside the generator — Starlette
-        # only iterates the body AFTER this route returns.
-        async def _gen() -> AsyncIterator[str]:
-            client = httpx.AsyncClient(timeout=HTTP_TIMEOUT)
-            try:
-                streamers = [("cleanapis", stream_cleanapis), ("gemini", stream_gemini), ("opencode", stream_opencode)]
-                for idx, (name, fn) in enumerate(streamers):
-                    try:
-                        async for chunk in _with_retries_stream(name, fn, client, req, cid):
-                            yield chunk
-                        return  # stream completed
-                    except ProviderError as e:
-                        failures[name] = str(e)
-                        logger.warning("[%s] stream failed: %s", name, _redacted(str(e)))
-                        if idx == len(streamers) - 1:
-                            yield ("data: " + json.dumps(
-                                {"error": {"message": "All providers failed: " + "; ".join(
-                                    f"{k}: {v}" for k, v in failures.items()),
-                                 "type": "provider_error"}}) + "\n\n")
-                            yield "data: [DONE]\n\n"
-                            return
-                        # else: fall through to next provider (nothing sent yet
-                        # only if failure happened pre-first-byte; mid-stream
-                        # failure also lands here — client keeps partial text)
-            finally:
-                await client.aclose()
-        return StreamingResponse(_gen(), media_type="text/event-stream",
-                                 headers={"Cache-Control": "no-cache",
-                                          "X-Accel-Buffering": "no"})
-
-    # Non-streaming: try cleanapis, fail over to gemini, then opencode.
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        for name, fn in (("cleanapis", call_cleanapis), ("gemini", call_gemini), ("opencode", call_opencode)):
-            try:
-                text = await _with_retries(name, fn, client, req)
-                return JSONResponse(openai_completion(cid, req.model or name, text))
-            except ProviderError as e:
-                failures[name] = str(e)
-    raise HTTPException(
-        status_code=502,
-        detail={"error": "All providers failed",
-                "providers": failures})
+        return await _stream_route(req, cid, rid)
+    return await _json_route(req, cid, rid)
 
 
-async def _with_retries_stream(name, fn, client, req, cid):
-    """Async-generator wrapper applying per-provider retries for streams."""
+def _headers(cand: Candidate, rid: str) -> Dict[str, str]:
+    return {"X-Sandra-Provider": cand.provider, "X-Sandra-Model": cand.model,
+            "X-Sandra-Rid": rid}
+
+
+def _failure_report(failures: Dict[str, str], last: Optional[ProviderError]) -> JSONResponse:
+    status = 502
+    if last is not None and last.kind == STOP and last.status and 400 <= last.status < 500:
+        status = last.status
+    if not failures:
+        message = ("No AI provider is configured — set CLEAN_API_KEY, GEMINI_API_KEY "
+                   "or OPENCODE_API_KEY on the server.")
+        status = 503
+    else:
+        message = "All providers failed: " + "; ".join(
+            f"{k} {v}" for k, v in failures.items())
+    return JSONResponse(
+        {"error": {"message": message, "type": "provider_error",
+                   "providers": failures}},
+        status_code=status)
+
+
+async def _json_route(req: ChatRequest, cid: str, rid: str) -> JSONResponse:
+    failures: Dict[str, str] = {}
     last: Optional[ProviderError] = None
-    for attempt in range(MAX_RETRIES + 1):
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        for cand in build_chain(req):
+            try:
+                text = await _attempt(client, cand, req, rid)
+            except ProviderError as e:
+                last = e
+                failures[cand.label] = _redacted(e.message)
+                logger.warning("[%s] %s failed: %s", rid, cand.label, _redacted(e.message))
+                if e.kind == STOP:
+                    break
+                continue
+            logger.info("[%s] %s answered", rid, cand.label)
+            return JSONResponse(openai_completion(cid, cand.model, text),
+                                headers=_headers(cand, rid))
+    return _failure_report(failures, last)
+
+
+async def _attempt(client: httpx.AsyncClient, cand: Candidate, req: ChatRequest,
+                   rid: str) -> str:
+    """Call a candidate, retrying in place only for network-level failures."""
+    for attempt in range(MAX_RETRIES_PER_PROVIDER + 1):
         try:
-            async for chunk in fn(client, req, cid):
-                yield chunk
-            return
+            return await call_candidate(client, cand, req)
         except ProviderError as e:
-            last = e
-            logger.warning("[%s] stream attempt %d/%d failed: %s", name, attempt + 1,
-                           MAX_RETRIES + 1, _redacted(str(e)))
-            if not e.retryable or attempt >= MAX_RETRIES:
-                break
+            network = "network error" in e.message
+            if not network or attempt >= MAX_RETRIES_PER_PROVIDER:
+                raise
+            logger.warning("[%s] %s network retry %d/%d", rid, cand.label,
+                           attempt + 1, MAX_RETRIES_PER_PROVIDER)
             await asyncio.sleep(0.5 * (2 ** attempt))
-    assert last is not None
-    raise last
+    raise ProviderError(cand, "unreachable")  # pragma: no cover
+
+
+async def _stream_route(req: ChatRequest, cid: str,
+                        rid: str) -> StreamingResponse | JSONResponse:
+    """Resolve a working candidate BEFORE the 200 headers go out."""
+    failures: Dict[str, str] = {}
+    last: Optional[ProviderError] = None
+    client = httpx.AsyncClient(timeout=HTTP_TIMEOUT)
+    chosen: Optional[Candidate] = None
+    gen: Optional[AsyncIterator[str]] = None
+    first = ""
+    for cand in build_chain(req):
+        for attempt in range(MAX_RETRIES_PER_PROVIDER + 1):
+            try:
+                gen, first = await _open_first_token(client, cand, req)
+                chosen = cand
+                break
+            except ProviderError as e:
+                last = e
+                failures[cand.label] = _redacted(e.message)
+                # Only network blips are retried in place; quota / model
+                # unavailability rotates to a DIFFERENT model straight away.
+                network = "network error" in e.message
+                logger.warning("[%s] %s %s: %s", rid, cand.label,
+                               "retrying" if network else
+                               ("rotating" if e.kind == ROTATE else "stopping"),
+                               _redacted(e.message))
+                if e.kind == STOP or not network or attempt >= MAX_RETRIES_PER_PROVIDER:
+                    break
+                await asyncio.sleep(0.5 * (2 ** attempt))
+        if chosen is not None or (last is not None and last.kind == STOP):
+            break
+
+    if chosen is None or gen is None:
+        await client.aclose()
+        return _failure_report(failures, last)
+
+    logger.info("[%s] streaming via %s", rid, chosen.label)
+    return StreamingResponse(
+        _stream_body(client, gen, first, chosen, cid),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+                 "Connection": "keep-alive", **_headers(chosen, rid)},
+    )
+
+
+async def _stream_body(client: httpx.AsyncClient, gen: AsyncIterator[str],
+                       first: str, cand: Candidate,
+                       cid: str) -> AsyncIterator[str]:
+    """Forward deltas; a failure here can no longer fail over, so just report it."""
+    try:
+        yield openai_chunk(cid, cand.model, first)
+        async for text in gen:
+            if text:
+                yield openai_chunk(cid, cand.model, text)
+        yield openai_chunk(cid, cand.model, "", finish="stop")
+        yield "data: [DONE]\n\n"
+    except (GeneratorExit, asyncio.CancelledError):
+        raise
+    except ProviderError as e:
+        logger.warning("stream from %s broke after first token: %s", cand.label,
+                       _redacted(e.message))
+        yield sse_error(f"{cand.label}: {e.message}")
+        yield "data: [DONE]\n\n"
+    except Exception as e:  # pragma: no cover - defensive
+        logger.exception("stream from %s crashed", cand.label)
+        yield sse_error(f"{cand.label}: {type(e).__name__}: {e}")
+        yield "data: [DONE]\n\n"
+    finally:
+        await _aclose(gen)
+        await client.aclose()
