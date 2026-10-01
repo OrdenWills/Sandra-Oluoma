@@ -56,7 +56,26 @@
         '- If the user pastes a non-LinkedIn link or asks something off-topic, politely steer back to profile work.',
         '- If the user is not ready to share a profile, still give genuinely useful general LinkedIn/personal-branding advice.',
         '- Ask at most ONE clarifying question before delivering value.',
-        '- End every audit with: "Want me to dig deeper into any section, or rewrite your headline/About for you?"'
+        '',
+        'INTERACTIVE QUESTIONS — a modal pops up over the chat when you use this block:',
+        '',
+        '[QUESTION]',
+        'What would you like me to focus on first?',
+        '- Rewrite my headline',
+        '- Rewrite my About section',
+        '- Full 12-dimension audit',
+        '- Experience & impact bullets',
+        '[/QUESTION]',
+        '',
+        'RULES FOR QUESTION BLOCKS:',
+        '- Put the block at the very END of your reply, exactly one per reply, using the literal tags [QUESTION] and [/QUESTION].',
+        '- The first non-bullet line inside is the question itself: one sentence, ending in a question mark.',
+        '- Every "- " line inside is a tappable option. Give 2 to 5 options, 3 to 7 words each, mutually exclusive, in the user\'s language.',
+        '- Ask only when the answer changes what you do next (target role, industry, which section to fix, tone). Otherwise just deliver the work.',
+        '- Never ask for something you can already read in the attached profile content, and never ask a yes/no question.',
+        '- Never mention the modal, the tags, or the word "QUESTION" in your visible text — the block is stripped from the message automatically.',
+        '- After a completed audit, close with a question block instead of a plain question, e.g. "What would you like next?" with options like "Deep-dive one section", "Rewrite my headline", "Rewrite my About", "Nothing for now".',
+        '- If the user picks an option or types free text, treat that as their next instruction and continue normally.'
     ].join('\n');
 
     /* ------------------------------------------------------------------ */
@@ -75,6 +94,7 @@
     };
 
     var ROOT, LAUNCHER, PANEL, CLOSE_BTN, CLEAR_BTN, MSGS, SUGGESTIONS, INPUT, SEND;
+    var Q_OVERLAY, Q_BODY, Q_OPTIONS, Q_FREETEXT, Q_SUBMIT, Q_SKIP, Q_DISMISS;
 
     function $(id) { return document.getElementById(id); }
 
@@ -114,6 +134,36 @@
 
         renderSuggestions();
         restoreChat();
+
+        /* --- Question modal wiring --- */
+        Q_OVERLAY = $('ai-question-overlay');
+        Q_BODY    = $('ai-question-body');
+        Q_OPTIONS = $('ai-question-options');
+        Q_FREETEXT = $('ai-question-freetext');
+        Q_SUBMIT  = $('ai-question-submit');
+        Q_SKIP    = $('ai-question-skip');
+        Q_DISMISS = $('ai-question-dismiss');
+
+        if (Q_SUBMIT)  Q_SUBMIT.addEventListener('click', submitQuestion);
+        if (Q_SKIP)    Q_SKIP.addEventListener('click', function () { dismissQuestion(true); });
+        if (Q_DISMISS) Q_DISMISS.addEventListener('click', function () { dismissQuestion(false); });
+        if (Q_OVERLAY) Q_OVERLAY.addEventListener('click', function (e) {
+            if (e.target === Q_OVERLAY) dismissQuestion(false);
+        });
+        if (Q_FREETEXT) {
+            // Enter submits, Shift+Enter adds a newline.
+            Q_FREETEXT.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    submitQuestion();
+                }
+            });
+        }
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && Q_OVERLAY && Q_OVERLAY.classList.contains('visible')) {
+                dismissQuestion(false);
+            }
+        });
     }
 
     /* ---------------- panel open/close ---------------- */
@@ -363,11 +413,18 @@
             STATE.streaming = false;
             SEND.disabled = false;
             text = (text || '').trim();
+
+            // A [QUESTION] block turns into the follow-up modal; strip it from
+            // the message so the user never sees the protocol tags.
+            var cleaned = parseQuestionBlock(text);
+            if (cleaned !== null) text = cleaned;
+
             bubble.setDone(text);
             if (text) {
                 STATE.history.push({ role: 'assistant', content: text });
                 saveChat();
             }
+            flushPendingAnswer();
         };
 
         var fail = function (err) {
@@ -462,6 +519,17 @@
                 var acc = '';
                 var finished = false;
 
+                // Hide the [QUESTION] block as it streams in, and raise the
+                // modal the moment the block closes (don't wait for [DONE]).
+                function absorb(delta) {
+                    acc += delta;
+                    if (/\[\/QUESTION\]/i.test(acc)) {
+                        var cleaned = parseQuestionBlock(acc);
+                        if (cleaned !== null) acc = cleaned;
+                    }
+                    bubble.setLive(liveText(acc));
+                }
+
                 function pump() {
                     return reader.read().then(function (r) {
                         if (r.done) { resolve(acc); return; }
@@ -480,11 +548,14 @@
                             try {
                                 var ev = JSON.parse(line);
                                 var ch = ev.choices && ev.choices[0];
-                                if (!ch) continue;
+                                if (!ch) {
+                                    // mid-stream provider error frame
+                                    if (ev.error) { reject(new Error(serviceMessage(ev.error))); return; }
+                                    continue;
+                                }
                                 var delta = (ch.delta && ch.delta.content) || (ch.message && ch.message.content) || '';
                                 if (delta) {
-                                    acc += delta;
-                                    bubble.setLive(acc);
+                                    absorb(delta);
                                 }
                                 if (ch.finish_reason) finished = true;
                             } catch (e) { /* skip partial/malformed lines */ }
@@ -500,7 +571,199 @@
         });
     }
 
+    /* ------------------------------------------------------------------ */
+    /* Question Modal — agent follow-up questions                          */
+    /* ------------------------------------------------------------------ */
+
+    var _questionCallback = null;   // set by showQuestion, called on submit
+    var _selectedOption = null;     // label of the currently selected option
+    var _pendingAnswer = null;      // answered while the reply was still streaming
+    var _lastFocus = null;
+
+    /**
+     * showQuestion(opts)
+     * Display a follow-up question modal overlaying the chat panel.
+     *
+     * @param {Object} opts
+     * @param {string}   opts.question   - The question text to display.
+     * @param {string[]} opts.options    - Array of option labels.
+     * @param {string}  [opts.placeholder] - Placeholder for the free-text area.
+     * @param {Function} [opts.onAnswer]  - Callback receiving { option, freeText }.
+     *                                      If omitted, the answer is sent as a
+     *                                      user message into the chat automatically.
+     */
+    function showQuestion(opts) {
+        if (!Q_OVERLAY || !Q_BODY || !Q_OPTIONS) return;
+        opts = opts || {};
+        _selectedOption = null;
+        _questionCallback = opts.onAnswer || null;
+
+        // Set question text
+        Q_BODY.textContent = opts.question || '';
+
+        // Build option buttons
+        Q_OPTIONS.innerHTML = '';
+        var options = (opts.options || []).slice(0, 6);
+        options.forEach(function (label) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'ai-question-option';
+            btn.setAttribute('aria-pressed', 'false');
+            btn.innerHTML = '<span class="ai-q-radio"></span><span class="ai-q-label">' + esc(label) + '</span>';
+            btn.addEventListener('click', function () {
+                var prev = Q_OPTIONS.querySelector('.selected');
+                if (prev) { prev.classList.remove('selected'); prev.setAttribute('aria-pressed', 'false'); }
+                btn.classList.add('selected');
+                btn.setAttribute('aria-pressed', 'true');
+                _selectedOption = String(label).trim();
+            });
+            Q_OPTIONS.appendChild(btn);
+        });
+
+        // Reset free-text
+        if (Q_FREETEXT) {
+            Q_FREETEXT.value = '';
+            Q_FREETEXT.placeholder = opts.placeholder || 'Or type your own answer… (Enter to send)';
+        }
+
+        // Show overlay
+        _lastFocus = document.activeElement;
+        Q_OVERLAY.classList.add('visible');
+        Q_OVERLAY.setAttribute('aria-hidden', 'false');
+        if (Q_FREETEXT) { try { Q_FREETEXT.focus({ preventScroll: true }); } catch (e) { Q_FREETEXT.focus(); } }
+    }
+
+    /**
+     * dismissQuestion(skip)
+     * Close the modal. If skip=true, send "I'd rather skip this question" as
+     * user reply so the agent can continue gracefully.
+     */
+    function dismissQuestion(skip) {
+        if (!Q_OVERLAY) return;
+        Q_OVERLAY.classList.remove('visible');
+        Q_OVERLAY.setAttribute('aria-hidden', 'true');
+        if (_lastFocus && _lastFocus.focus) { try { _lastFocus.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+        _lastFocus = null;
+        var cb = _questionCallback;
+        _questionCallback = null;
+        _selectedOption = null;
+        if (skip) answerNow(cb, "I'd rather skip this question — give me your best audit with what you have.");
+    }
+
+    /**
+     * submitQuestion()
+     * Collect the selected option + free-text and either call the provided
+     * callback or inject the answer as a user message.
+     */
+    function submitQuestion() {
+        if (!Q_OVERLAY) return;
+        var optionText = _selectedOption;
+        var freeText = (Q_FREETEXT && Q_FREETEXT.value) ? Q_FREETEXT.value.trim() : '';
+
+        if (!optionText && !freeText) {
+            if (Q_FREETEXT) Q_FREETEXT.focus();
+            return;   // nothing to submit
+        }
+
+        // Build a readable answer string
+        var answer = '';
+        if (optionText) answer += optionText;
+        if (optionText && freeText) answer += ' — ' + freeText;
+        else if (freeText) answer += freeText;
+
+        Q_OVERLAY.classList.remove('visible');
+        Q_OVERLAY.setAttribute('aria-hidden', 'true');
+        _lastFocus = null;
+
+        var cb = _questionCallback;
+        _questionCallback = null;
+        _selectedOption = null;
+        answerNow(cb, answer);
+    }
+
+    /* Send an answer now, or hold it until the in-flight reply finishes. */
+    function answerNow(callback, answer) {
+        if (typeof callback === 'function') { callback({ answer: answer }); return; }
+        if (STATE.streaming) { _pendingAnswer = answer; return; }
+        send(answer);
+    }
+
+    function flushPendingAnswer() {
+        if (!_pendingAnswer) return;
+        var answer = _pendingAnswer;
+        _pendingAnswer = null;
+        setTimeout(function () { send(answer); }, 60);
+    }
+
+    /**
+     * liveText(text)
+     * Hide a [QUESTION] block that is still streaming in, so the protocol tags
+     * never flash on screen before the block closes.
+     */
+    function liveText(text) {
+        var open = /\[QUESTION\]/i.exec(text || '');
+        if (!open) return text;
+        var tail = text.slice(open.index);
+        if (/\[\/QUESTION\]/i.test(tail)) return text;
+        return text.slice(0, open.index);
+    }
+
+    /**
+     * parseQuestionBlock(text)
+     * Detect a structured [QUESTION] block in AI output and auto-open the modal.
+     *
+     * Format the agent should use:
+     *   [QUESTION]
+     *   What would you like me to focus on?
+     *   - Headline rewrite
+     *   - About section overhaul
+     *   - Full deep-dive
+     *   [/QUESTION]
+     *
+     * Returns the text with the block removed (clean markdown for rendering),
+     * or null if no block was found. Tolerates an unterminated block (model ran
+     * out of tokens) and inline markers such as [QUESTION] ... [/QUESTION].
+     */
+    function parseQuestionBlock(text) {
+        if (!text) return null;
+        var closed = /\[QUESTION\]\s*([\s\S]*?)\s*\[\/QUESTION\]/i.exec(text);
+        var open = closed ? null : /\[QUESTION\]\s*([\s\S]*)$/i.exec(text);
+        var match = closed || open;
+        if (!match) return null;
+
+        var question = '';
+        var options = [];
+        match[1].split('\n').forEach(function (line) {
+            var trimmed = line.trim();
+            if (!trimmed) return;
+            var bullet = /^[-•*+]\s+/.exec(trimmed) || /^\d+[.)]\s+/.exec(trimmed);
+            if (bullet) {
+                options.push(trimmed.slice(bullet[0].length).trim());
+            } else {
+                question += (question ? ' ' : '') + trimmed;
+            }
+        });
+
+        var cleaned = text.replace(match[0], '').replace(/[ \t]+$/gm, '').trim();
+        // Keep the bullet list style: the question is the only thing we surface.
+        if (question && options.length) {
+            showQuestion({ question: question.replace(/\s+/g, ' ').trim(), options: options });
+        }
+        return cleaned;
+    }
+
+    function serviceMessage(err) {
+        if (!err) return 'The AI service reported an error.';
+        if (typeof err === 'string') return err;
+        return err.message || 'The AI service reported an error.';
+    }
+
+    /* Expose showQuestion globally so external code / server can trigger it */
+    window.SandraAI = window.SandraAI || {};
+    window.SandraAI.showQuestion = showQuestion;
+
     /* ---------------- persistence ---------------- */
+
 
     function saveChat() {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ h: STATE.history.slice(-40) })); }
