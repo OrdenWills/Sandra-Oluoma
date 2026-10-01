@@ -22,8 +22,8 @@ services:
       - key: OPENCODE_MODEL
         value: nemotron-3-ultra-free
       - key: FRONTEND_ORIGINS
-        value: https://sandra-chukwuemeka.github.io
+        value: https://ordenwills.github.io/Sandra-Oluoma/
       - key: CORS_ALLOW_ALL_ORIGINS
-        value: "true"
+        value: "false"
       - key: MAX_RETRIES_PER_PROVIDER
         value: "2"
