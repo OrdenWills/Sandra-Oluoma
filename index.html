@@ -660,27 +660,26 @@
             <!-- Question Modal Overlay (agent follow-up) -->
             <div id="ai-question-overlay" class="ai-question-overlay" aria-hidden="true">
                 <div class="ai-question-modal" role="dialog" aria-modal="true"
-                    aria-labelledby="ai-question-heading">
+                    aria-labelledby="ai-question-kicker-text">
                     <div class="ai-question-header">
-                        <div class="ai-question-title">
+                        <div class="ai-question-kicker">
                             <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
-                            <span id="ai-question-heading">Sandra. AI has a question</span>
+                            <span id="ai-question-kicker-text">Sandra. AI</span>
                         </div>
                         <button type="button" class="ai-question-dismiss" id="ai-question-dismiss"
-                            aria-label="Dismiss question" title="Dismiss">
+                            aria-label="Dismiss questions" title="Dismiss">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
-                    <div class="ai-question-body" id="ai-question-body"></div>
-                    <div class="ai-question-options" id="ai-question-options" role="group"
-                        aria-label="Answer options"></div>
-                    <div class="ai-question-freetext">
-                        <label class="sr-only" for="ai-question-freetext">Type your own answer</label>
-                        <textarea id="ai-question-freetext" rows="2"
-                            placeholder="Or type your own answer… (Enter to send)"></textarea>
-                    </div>
+                    <div class="ai-question-tabs" id="ai-question-tabs" role="tablist"
+                        aria-label="Questions"></div>
+                    <div class="ai-question-panels" id="ai-question-panels"></div>
                     <div class="ai-question-footer">
-                        <button type="button" class="ai-question-submit" id="ai-question-submit">Submit</button>
+                        <button type="button" class="ai-question-nav" id="ai-question-prev" aria-label="Previous question">
+                            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+                        <button type="button" class="ai-question-nav" id="ai-question-next" aria-label="Next question">
+                            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+                        <button type="button" class="ai-question-submit" id="ai-question-submit">Submit answers</button>
                         <button type="button" class="ai-question-skip" id="ai-question-skip">Skip</button>
                     </div>
                 </div>
