@@ -49,7 +49,7 @@
         '',
         '**1. Quick Verdict** — 2-3 honest sentences of summary plus an overall score (X/100) and a one-line readiness label (Unignorable / Nearly There / Needs Work / Starting Point).',
         '',
-        '**2. Scorecard** — a compact table of the areas you checked with a score out of 10, what works and what\'s missing. Show the areas and the scores; never show weights, percentages, or how the total was calculated.',
+        '**2. Scorecard** — a compact table of the areas you checked, with AT MOST 3 columns: Area | Score (x/10) | Verdict, where Verdict is 3 to 6 words, never a sentence. Show the areas and the scores; never show weights, percentages, or how the total was calculated. Put everything longer in the sections below.',
         '',
         '**3. Strengths** — 3-5 evidence-based things they already do well.',
         '',
@@ -62,6 +62,8 @@
         'TONE & RULES:',
         '- Be warm, direct, and specific. Never vague or generic. Honesty with evidence over flattery.',
         '- Use clean markdown (headings, bold, bullets, tables) so it is easy to skim.',
+        '- NARROW SCREEN: the reply is read in a chat panel roughly 500px wide, on a phone more often than not. Format for that width. Never use more than 3 table columns. Keep every cell under about 8 words — one short line, not a sentence, not a paragraph. If a row needs more, drop the table and use bold-label bullets ("**Headline — 6/10** · Clear but generic · add 3 role keywords"). Never split a word or a header across lines, and never build a table with a column per metric, per month or per item — group instead ("Posts 1-3" not one row each). Prefer short paragraphs and bullets to wide tables wherever both would work.',
+        '- Use one H2 or bold label per idea, never nested lists deeper than two levels, and put the answer before the explanation.',
         '- You only see what the user shares or what is attached. Never invent private data or metrics; if a section is missing from the fetched content, tell the user how to make it public or paste it.',
         '- If the user pastes a non-LinkedIn link or asks something off-topic, politely steer back to profile work.',
         '- If the user is not ready to share a profile, still give genuinely useful general LinkedIn/personal-branding advice.',
@@ -145,6 +147,7 @@
 
         renderSuggestions();
         restoreChat();
+        window.addEventListener('resize', refreshTableOverflow);
 
         /* --- Question modal wiring --- */
         Q_OVERLAY = $('ai-question-overlay');
@@ -279,10 +282,52 @@
 
     function renderMd(text) {
         if (window.marked && typeof window.marked.parse === 'function') {
-            try { return window.marked.parse(text, { gfm: true, breaks: true }); }
+            try { return wrapTables(window.marked.parse(text, { gfm: true, breaks: true })); }
             catch (e) { /* fall through */ }
         }
         return '<p>' + esc(text).replace(/\n/g, '<br>') + '</p>';
+    }
+
+    /* A 4-column table in a ~500px chat pane gets crushed and headers start
+       breaking letter by letter. Every table is put in its own horizontal
+       scroller instead, with a right-edge fade that disappears at the end. */
+    function wrapTables(html) {
+        var host = document.createElement('div');
+        host.innerHTML = html;
+        var tables = host.querySelectorAll('table');
+        for (var i = 0; i < tables.length; i++) {
+            var table = tables[i];
+            if (table.parentNode && table.parentNode.classList.contains('ai-table-wrap')) continue;
+            var scroller = document.createElement('div');
+            scroller.className = 'ai-table-wrap';
+            scroller.tabIndex = 0;
+            scroller.setAttribute('role', 'region');
+            scroller.setAttribute('aria-label', 'Table, scroll sideways for more');
+            var shell = document.createElement('div');
+            shell.className = 'ai-table-shell';
+            table.parentNode.insertBefore(shell, table);
+            shell.appendChild(scroller);
+            scroller.appendChild(table);
+            scroller.addEventListener('scroll', function () { markTableOverflow(this); }, { passive: true });
+            markTableOverflow(scroller);
+        }
+        return host.innerHTML;
+    }
+
+    function markTableOverflow(scroller) {
+        var overflowing = scroller.scrollWidth > scroller.clientWidth + 2;
+        var atEnd = scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 2;
+        scroller.classList.toggle('has-overflow', overflowing);
+        scroller.classList.toggle('at-end', atEnd);
+        var shell = scroller.parentNode;
+        if (shell && shell.classList.contains('ai-table-shell')) {
+            shell.classList.toggle('more-right', overflowing && !atEnd);
+        }
+    }
+
+    function refreshTableOverflow() {
+        var all = MSGS ? MSGS.querySelectorAll('.ai-table-wrap') : [];
+        for (var i = 0; i < all.length; i++) markTableOverflow(all[i]);
     }
 
     function showWelcome() {

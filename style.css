@@ -1846,6 +1846,62 @@ footer {
     font-style: italic;
 }
 
+/* The chat pane is ~500px wide, so a 4-column table would otherwise be
+   compressed until headers broke letter by letter. Tables live in their own
+   horizontal scroller (see wrapTables in ai-widget.js). */
+.ai-md .ai-table-shell {
+    position: relative;
+    width: 100%;
+    margin: 0.6rem 0;
+}
+
+.ai-md .ai-table-shell::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    right: 0;
+    bottom: 1px;
+    width: 34px;
+    pointer-events: none;
+    border-radius: 0 8px 8px 0;
+    background: linear-gradient(to left, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.ai-md .ai-table-shell.more-right::after {
+    opacity: 1;
+}
+
+.ai-md .ai-table-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    border-radius: 8px;
+    scrollbar-width: thin;
+}
+
+.ai-md .ai-table-wrap:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.ai-md .ai-table-wrap::-webkit-scrollbar {
+    height: 6px;
+}
+
+.ai-md .ai-table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(213, 141, 25, 0.4);
+    border-radius: 3px;
+}
+
+.ai-md .ai-table-wrap table {
+    margin: 0;
+    width: auto;
+    min-width: 100%;
+}
+
 .ai-md table {
     width: 100%;
     border-collapse: collapse;
@@ -1864,6 +1920,16 @@ footer {
     background: rgba(213, 141, 25, 0.12);
     color: var(--text-main);
     font-weight: 600;
+    /* never let a header word shatter into single letters */
+    white-space: nowrap;
+}
+
+.ai-md td {
+    min-width: 5.5rem;
+    max-width: 15rem;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: none;
 }
 
 .ai-md tr:nth-child(even) td {
