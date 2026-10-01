@@ -648,8 +648,14 @@
             <div class="ai-input-row">
                 <textarea id="ai-input" rows="1"
                     placeholder="Paste a LinkedIn profile URL or ask a question…"></textarea>
+                <label class="ai-attach" for="ai-file" title="Attach your LinkedIn PDF export"
+                    aria-label="Attach a profile PDF or text file">
+                    <i class="fa-solid fa-paperclip" aria-hidden="true"></i>
+                    <input type="file" id="ai-file" accept=".pdf,.txt,.md,text/plain,application/pdf" hidden>
+                </label>
                 <button type="button" id="ai-send" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
+            <div id="ai-attach-note" class="ai-attach-note" role="status" aria-live="polite"></div>
 
             <!-- Question Modal Overlay (agent follow-up) -->
             <div id="ai-question-overlay" class="ai-question-overlay" aria-hidden="true">
