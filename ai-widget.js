@@ -452,12 +452,12 @@
                     return reader.read().then(function (r) {
                         if (r.done) { resolve(acc); return; }
                         buf += dec.decode(r.value, { stream: true });
-                        var idx;
-                        while ((idx = buf.indexOf('\n\n')) !== -1) {
-                            var chunk = buf.slice(0, idx);
-                            buf = buf.slice(idx + 2);
+                        var m;
+                        while ((m = buf.match(/\r\n\r\n|\n\n/))) {
+                            var chunk = buf.slice(0, m.index);
+                            buf = buf.slice(m.index + m[0].length);
                             var line = null;
-                            var parts = chunk.split('\n');
+                            var parts = chunk.split(/\r?\n/);
                             for (var i = 0; i < parts.length; i++) {
                                 if (parts[i].indexOf('data:') === 0) { line = parts[i].slice(5).trim(); break; }
                             }

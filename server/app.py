@@ -17,6 +17,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from typing import Any, AsyncIterator, Dict, List, Optional
@@ -209,8 +210,9 @@ async def call_gemini(client: httpx.AsyncClient, req: ChatRequest) -> str:
     if not GEMINI_API_KEY:
         raise ProviderError("gemini", "GEMINI_API_KEY not configured",
                             retryable=False)
+    model = req.model if (req.model and "gemini" in req.model.lower()) else GEMINI_MODEL
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"{GEMINI_MODEL}:generateContent")
+           f"{model}:generateContent")
     try:
         r = await client.post(
             url, headers={"x-goog-api-key": GEMINI_API_KEY,
@@ -233,8 +235,28 @@ async def stream_gemini(client: httpx.AsyncClient, req: ChatRequest,
     if not GEMINI_API_KEY:
         raise ProviderError("gemini", "GEMINI_API_KEY not configured",
                             retryable=False)
+    model = req.model if (req.model and "gemini" in req.model.lower()) else GEMINI_MODEL
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"{GEMINI_MODEL}:streamGenerateContent?alt=sse")
+           f"{model}:streamGenerateContent?alt=sse")
+
+    def _extract_chunk_text(chunk_data: Dict[str, Any]) -> Optional[str]:
+        cands = chunk_data.get("candidates") or []
+        if not cands:
+            return None
+        parts = ((cands[0].get("content") or {}).get("parts")) or []
+        text_pieces = [
+            p.get("text", "") for p in parts
+            if isinstance(p, dict) and p.get("text") and not p.get("thought")
+        ]
+        if text_pieces:
+            return "".join(text_pieces)
+        content = cands[0].get("content")
+        if isinstance(content, str) and content.strip():
+            return content
+        if isinstance(content, dict) and content.get("text"):
+            return content.get("text")
+        return None
+
     try:
         async with client.stream(
             "POST", url,
@@ -255,38 +277,44 @@ async def stream_gemini(client: httpx.AsyncClient, req: ChatRequest,
             buf = ""
             async for raw in r.aiter_text():
                 buf += raw
-                while "\n\n" in buf:
-                    event, buf = buf.split("\n\n", 1)
-                    line = next((ln[5:].strip() for ln in event.splitlines()
-                                 if ln.startswith("data:")), "")
-                    if not line or line == "[DONE]":
-                        continue
-                    try:
-                        chunk_data = json.loads(line)
-                        logger.info("gemini raw stream chunk: %s", chunk_data)
-                        # Extract text from streaming chunk - try partial first, then final
-                        text = None
-                        cands = chunk_data.get("candidates") or []
-                        if cands:
-                            parts = ((cands[0].get("content") or {}).get("parts")) or []
-                            for p in parts:
-                                if isinstance(p, dict) and p.get("text"):
-                                    text = p.get("text")
-                                    break
-                            # If no text in parts, check for string content in final chunk
-                            if not text:
-                                content = cands[0].get("content")
-                                if isinstance(content, str) and content.strip():
-                                    text = content
-                                elif isinstance(content, dict):
-                                    text = content.get("text", "")
-                        if text:
-                            yield openai_chunk(cid, GEMINI_MODEL, text)
-                    except (json.JSONDecodeError, ProviderError):
-                        continue
+                while True:
+                    m = re.search(r"\r\n\r\n|\n\n", buf)
+                    if not m:
+                        break
+                    event = buf[:m.start()]
+                    buf = buf[m.end():]
+                    for line in event.splitlines():
+                        line = line.strip()
+                        if not line.startswith("data:"):
+                            continue
+                        data_str = line[5:].strip()
+                        if not data_str or data_str == "[DONE]":
+                            continue
+                        try:
+                            chunk_data = json.loads(data_str)
+                            text = _extract_chunk_text(chunk_data)
+                            if text:
+                                yield openai_chunk(cid, model, text)
+                        except (json.JSONDecodeError, ProviderError):
+                            continue
+
+            if buf.strip():
+                for line in buf.splitlines():
+                    line = line.strip()
+                    if line.startswith("data:"):
+                        data_str = line[5:].strip()
+                        if data_str and data_str != "[DONE]":
+                            try:
+                                chunk_data = json.loads(data_str)
+                                text = _extract_chunk_text(chunk_data)
+                                if text:
+                                    yield openai_chunk(cid, model, text)
+                            except (json.JSONDecodeError, ProviderError):
+                                pass
+
     except (httpx.TimeoutException, httpx.ConnectError) as e:
         raise ProviderError("gemini", f"network error: {e}")
-    yield openai_chunk(cid, GEMINI_MODEL, "", finish="stop")
+    yield openai_chunk(cid, model, "", finish="stop")
     yield "data: [DONE]\n\n"
 
 
