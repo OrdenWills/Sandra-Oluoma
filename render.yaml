@@ -15,6 +15,12 @@ services:
         sync: false
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
+      - key: CLEAN_API_KEY
+        sync: false
+      - key: CLEAN_BASE_URL
+        value: https://cleanapis.com/v1
+      - key: CLEAN_MODEL
+        value: claude-opus-4.8
       - key: OPENCODE_API_KEY
         sync: false
       - key: OPENCODE_BASE_URL

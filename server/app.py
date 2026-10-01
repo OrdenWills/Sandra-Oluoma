@@ -1,6 +1,6 @@
 """Sandra AI backend — FastAPI proxy for the LinkedIn Profile Audit widget.
 
-Provider order: Gemini (primary) -> OpenCode (failover).
+Provider order: Gemini (primary) -> CleanAPIs (failover 1) -> OpenCode (failover 2).
 Each provider is retried (backoff) before failing over to the next.
 Only when ALL providers fail does the request fail (502 + per-provider summary).
 
@@ -35,6 +35,9 @@ load_dotenv()  # server/.env locally; Render injects env vars directly
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+CLEAN_API_KEY = (os.getenv("CLEAN_API_KEY") or os.getenv("clean_api_key") or "").strip()
+CLEAN_BASE_URL = os.getenv("CLEAN_BASE_URL", "https://cleanapis.com/v1").strip().rstrip("/")
+CLEAN_MODEL = os.getenv("CLEAN_MODEL", "claude-opus-4.8").strip()
 OPENCODE_API_KEY = os.getenv("OPENCODE_API_KEY", "").strip()
 OPENCODE_BASE_URL = os.getenv("OPENCODE_BASE_URL", "https://opencode.ai/zen/v1").strip().rstrip("/")
 OPENCODE_MODEL = os.getenv("OPENCODE_MODEL", "nemotron-3-ultra-free").strip()
@@ -91,6 +94,9 @@ async def log_requests(request: Request, call_next):
 class ChatMessage(BaseModel):
     role: str = "user"
     content: Any = ""
+    name: Optional[str] = None
+    tool_call_id: Optional[str] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None
 
 
 class ChatRequest(BaseModel):
@@ -99,6 +105,8 @@ class ChatRequest(BaseModel):
     temperature: float = 0.4
     max_tokens: int = 3072
     stream: bool = False
+    tools: Optional[List[Dict[str, Any]]] = None
+    tool_choice: Optional[Any] = None
 
 
 # ---------------------------------------------------------------- errors ---
@@ -115,7 +123,7 @@ class ProviderError(Exception):
 
 def _redacted(msg: str) -> str:
     # Never leak key material into logs/responses.
-    for secret in (GEMINI_API_KEY, OPENCODE_API_KEY):
+    for secret in (GEMINI_API_KEY, CLEAN_API_KEY, OPENCODE_API_KEY):
         if secret and len(secret) > 8 and secret in msg:
             msg = msg.replace(secret, secret[:4] + "…[redacted]")
     return msg[:600]
@@ -132,6 +140,20 @@ def _text_of(content: Any) -> str:
             if isinstance(p, dict) and p.get("type") == "text" and p.get("text")
         )
     return str(content or "")
+
+
+def to_openai_messages(messages: List[ChatMessage]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for m in messages:
+        entry: Dict[str, Any] = {"role": m.role or "user", "content": _text_of(m.content)}
+        if m.name:
+            entry["name"] = m.name
+        if m.tool_call_id:
+            entry["tool_call_id"] = m.tool_call_id
+        if m.tool_calls:
+            entry["tool_calls"] = m.tool_calls
+        out.append(entry)
+    return out
 
 
 def to_gemini_payload(messages: List[ChatMessage], temperature: float,
@@ -318,21 +340,119 @@ async def stream_gemini(client: httpx.AsyncClient, req: ChatRequest,
     yield "data: [DONE]\n\n"
 
 
+async def call_cleanapis(client: httpx.AsyncClient, req: ChatRequest) -> str:
+    if not CLEAN_API_KEY:
+        raise ProviderError("cleanapis", "CLEAN_API_KEY not configured",
+                            retryable=False)
+    model = req.model if (req.model and not any(k in req.model.lower() for k in ("gemini", "nemotron"))) else CLEAN_MODEL
+    max_tokens = max(2048, min(16384, req.max_tokens or 4096))
+    payload: Dict[str, Any] = {
+        "model": model,
+        "messages": to_openai_messages(req.messages),
+        "temperature": max(0.0, min(2.0, req.temperature)),
+        "max_tokens": max_tokens,
+        "stream": False,
+    }
+    if req.tools:
+        payload["tools"] = req.tools
+    if req.tool_choice:
+        payload["tool_choice"] = req.tool_choice
+
+    try:
+        r = await client.post(
+            f"{CLEAN_BASE_URL}/chat/completions",
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {CLEAN_API_KEY}"},
+            json=payload,
+        )
+    except (httpx.TimeoutException, httpx.ConnectError) as e:
+        raise ProviderError("cleanapis", f"network error: {e}")
+    if r.status_code == 429 or r.status_code >= 500:
+        raise ProviderError("cleanapis", f"HTTP {r.status_code}: {_redacted(r.text)}")
+    if r.status_code != 200:
+        raise ProviderError("cleanapis", f"HTTP {r.status_code}: {_redacted(r.text)}",
+                            retryable=False)
+    try:
+        data = r.json()
+        if "error" in data:
+            raise ProviderError("cleanapis", f"API error: {data['error']}", retryable=False)
+        msg = ((data.get("choices") or [{}])[0].get("message")) or {}
+        text = msg.get("content") or ""
+    except (ValueError, AttributeError, IndexError) as e:
+        raise ProviderError("cleanapis", f"unexpected response shape: {e}",
+                            retryable=False)
+    if not text.strip():
+        raise ProviderError("cleanapis", "empty completion", retryable=False)
+    return text
+
+
+async def stream_cleanapis(client: httpx.AsyncClient, req: ChatRequest,
+                           cid: str) -> AsyncIterator[str]:
+    """Pass CleanAPIs SSE stream through, supporting reasoning models and keepalive."""
+    if not CLEAN_API_KEY:
+        raise ProviderError("cleanapis", "CLEAN_API_KEY not configured",
+                            retryable=False)
+    model = req.model if (req.model and not any(k in req.model.lower() for k in ("gemini", "nemotron"))) else CLEAN_MODEL
+    max_tokens = max(2048, min(16384, req.max_tokens or 4096))
+    payload: Dict[str, Any] = {
+        "model": model,
+        "messages": to_openai_messages(req.messages),
+        "temperature": max(0.0, min(2.0, req.temperature)),
+        "max_tokens": max_tokens,
+        "stream": True,
+    }
+    if req.tools:
+        payload["tools"] = req.tools
+    if req.tool_choice:
+        payload["tool_choice"] = req.tool_choice
+
+    try:
+        async with client.stream(
+            "POST", f"{CLEAN_BASE_URL}/chat/completions",
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {CLEAN_API_KEY}",
+                     "Accept": "text/event-stream"},
+            json=payload,
+        ) as r:
+            if r.status_code == 429 or r.status_code >= 500:
+                body = await r.aread()
+                raise ProviderError(
+                    "cleanapis", f"HTTP {r.status_code}: {_redacted(body.decode(errors='ignore'))}")
+            if r.status_code != 200:
+                body = await r.aread()
+                raise ProviderError(
+                    "cleanapis",
+                    f"HTTP {r.status_code}: {_redacted(body.decode(errors='ignore'))}",
+                    retryable=False)
+            async for raw in r.aiter_text():
+                # Forward chunks verbatim
+                yield raw
+    except (httpx.TimeoutException, httpx.ConnectError) as e:
+        raise ProviderError("cleanapis", f"network error: {e}")
+
+
 async def call_opencode(client: httpx.AsyncClient, req: ChatRequest) -> str:
     if not OPENCODE_API_KEY:
         raise ProviderError("opencode", "OPENCODE_API_KEY not configured",
                             retryable=False)
+    model = req.model if (req.model and "nemotron" in req.model.lower()) else OPENCODE_MODEL
+    payload: Dict[str, Any] = {
+        "model": model,
+        "messages": to_openai_messages(req.messages),
+        "temperature": max(0.0, min(2.0, req.temperature)),
+        "max_tokens": max(1, min(8192, req.max_tokens)),
+        "stream": False,
+    }
+    if req.tools:
+        payload["tools"] = req.tools
+    if req.tool_choice:
+        payload["tool_choice"] = req.tool_choice
     try:
         r = await client.post(
             f"{OPENCODE_BASE_URL}/chat/completions",
             headers={"Content-Type": "application/json",
                      "Authorization": f"Bearer {OPENCODE_API_KEY}"},
-            json={"model": OPENCODE_MODEL,
-                  "messages": [{"role": m.role, "content": _text_of(m.content)}
-                               for m in req.messages],
-                  "temperature": max(0.0, min(2.0, req.temperature)),
-                  "max_tokens": max(1, min(8192, req.max_tokens)),
-                  "stream": False},
+            json=payload,
         )
     except (httpx.TimeoutException, httpx.ConnectError) as e:
         raise ProviderError("opencode", f"network error: {e}")
@@ -358,18 +478,25 @@ async def stream_opencode(client: httpx.AsyncClient, req: ChatRequest,
     if not OPENCODE_API_KEY:
         raise ProviderError("opencode", "OPENCODE_API_KEY not configured",
                             retryable=False)
+    model = req.model if (req.model and "nemotron" in req.model.lower()) else OPENCODE_MODEL
+    payload: Dict[str, Any] = {
+        "model": model,
+        "messages": to_openai_messages(req.messages),
+        "temperature": max(0.0, min(2.0, req.temperature)),
+        "max_tokens": max(1, min(8192, req.max_tokens)),
+        "stream": True,
+    }
+    if req.tools:
+        payload["tools"] = req.tools
+    if req.tool_choice:
+        payload["tool_choice"] = req.tool_choice
     try:
         async with client.stream(
             "POST", f"{OPENCODE_BASE_URL}/chat/completions",
             headers={"Content-Type": "application/json",
                      "Authorization": f"Bearer {OPENCODE_API_KEY}",
                      "Accept": "text/event-stream"},
-            json={"model": OPENCODE_MODEL,
-                  "messages": [{"role": m.role, "content": _text_of(m.content)}
-                               for m in req.messages],
-                  "temperature": max(0.0, min(2.0, req.temperature)),
-                  "max_tokens": max(1, min(8192, req.max_tokens)),
-                  "stream": True},
+            json=payload,
         ) as r:
             if r.status_code == 429 or r.status_code >= 500:
                 body = await r.aread()
@@ -414,15 +541,17 @@ async def _with_retries(label: str, fn, *args):
 @app.get("/")
 async def root():
     return {"service": "sandra-ai-backend", "status": "ok",
-            "providers": ["gemini", "opencode"],
+            "providers": ["gemini", "cleanapis", "opencode"],
             "docs": "POST /v1/chat/completions with {messages, model?, temperature?, max_tokens?, stream?}"}
 
 
 @app.get("/health")
 async def health():
     return {"status": "ok",
-            "providers": ["gemini", "opencode"],
+            "providers": ["gemini", "cleanapis", "opencode"],
             "gemini": {"configured": bool(GEMINI_API_KEY), "model": GEMINI_MODEL},
+            "cleanapis": {"configured": bool(CLEAN_API_KEY), "model": CLEAN_MODEL,
+                          "base_url": CLEAN_BASE_URL},
             "opencode": {"configured": bool(OPENCODE_API_KEY), "model": OPENCODE_MODEL,
                          "base_url": OPENCODE_BASE_URL},
             "cors_allow_all": CORS_ALLOW_ALL,
@@ -444,7 +573,7 @@ async def chat_completions(req: ChatRequest, request: Request):
         async def _gen() -> AsyncIterator[str]:
             client = httpx.AsyncClient(timeout=HTTP_TIMEOUT)
             try:
-                streamers = [("gemini", stream_gemini), ("opencode", stream_opencode)]
+                streamers = [("gemini", stream_gemini), ("cleanapis", stream_cleanapis), ("opencode", stream_opencode)]
                 for idx, (name, fn) in enumerate(streamers):
                     try:
                         async for chunk in _with_retries_stream(name, fn, client, req, cid):
@@ -469,9 +598,9 @@ async def chat_completions(req: ChatRequest, request: Request):
                                  headers={"Cache-Control": "no-cache",
                                           "X-Accel-Buffering": "no"})
 
-    # Non-streaming: try gemini, fail over to opencode.
+    # Non-streaming: try gemini, fail over to cleanapis, then opencode.
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        for name, fn in (("gemini", call_gemini), ("opencode", call_opencode)):
+        for name, fn in (("gemini", call_gemini), ("cleanapis", call_cleanapis), ("opencode", call_opencode)):
             try:
                 text = await _with_retries(name, fn, client, req)
                 return JSONResponse(openai_completion(cid, req.model or name, text))
