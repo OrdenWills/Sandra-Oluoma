@@ -126,6 +126,72 @@
 
     function $(id) { return document.getElementById(id); }
 
+    /* ---------------- server keep-alive ----------------
+       The free Render backend spins down after ~15 minutes without traffic, so
+       the first AI request after a quiet spell pays a slow cold start. While
+       the page is actually open and focused, ping the backend home route every
+       few minutes to keep it awake. No traffic is sent when the tab is hidden. */
+    var KEEPALIVE_MS = 5 * 60 * 1000;
+    var KEEPALIVE_MIN_GAP_MS = 60 * 1000;
+    var _keepaliveTimer = null;
+    var _keepaliveUrl = null;
+    var _lastPing = 0;
+
+    function keepaliveUrl() {
+        if (_keepaliveUrl !== null) return _keepaliveUrl;
+        var ep = String(CFG.proxyEndpoint || '').trim();
+        var m = ep.match(/^(https?:\/\/[^\/]+)/i);
+        _keepaliveUrl = m ? m[1] + '/' : null;
+        return _keepaliveUrl;
+    }
+
+    function pingServer() {
+        var url = keepaliveUrl();
+        if (!url) return;
+        var now = Date.now();
+        if (now - _lastPing < KEEPALIVE_MIN_GAP_MS) return;
+        _lastPing = now;
+        try {
+            fetch(url, { method: 'GET', mode: 'no-cors', cache: 'no-store' })
+                .catch(function () { /* offline / cold start: just retry next tick */ });
+        } catch (e) { /* fetch unavailable: nothing to do */ }
+    }
+
+    function stopKeepalive() {
+        if (_keepaliveTimer !== null) {
+            clearInterval(_keepaliveTimer);
+            _keepaliveTimer = null;
+        }
+    }
+
+    function startKeepalive() {
+        pingServer();
+        if (_keepaliveTimer === null) {
+            _keepaliveTimer = setInterval(pingServer, KEEPALIVE_MS);
+        }
+    }
+
+    function keepaliveActive() {
+        if (document.visibilityState && document.visibilityState !== 'visible') return false;
+        if (typeof document.hasFocus === 'function' && !document.hasFocus()) return false;
+        return true;
+    }
+
+    function syncKeepalive() {
+        if (keepaliveActive()) startKeepalive();
+        else stopKeepalive();
+    }
+
+    function initKeepalive() {
+        if (!keepaliveUrl()) return;
+        document.addEventListener('visibilitychange', syncKeepalive);
+        window.addEventListener('focus', syncKeepalive);
+        window.addEventListener('blur', syncKeepalive);
+        window.addEventListener('pageshow', syncKeepalive);
+        window.addEventListener('pagehide', stopKeepalive);
+        syncKeepalive();
+    }
+
     function init() {
         ROOT = $('ai-widget');
         if (!ROOT) return;
@@ -173,6 +239,7 @@
         renderSuggestions();
         restoreChat();
         window.addEventListener('resize', refreshTableOverflow);
+        initKeepalive();
 
         /* --- Question modal wiring --- */
         Q_OVERLAY = $('ai-question-overlay');
