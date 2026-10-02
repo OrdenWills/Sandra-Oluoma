@@ -713,6 +713,7 @@
     }
 
     function callApi() {
+        _turnAsked = false;
         var bubble = createAssistantMessage('', { status: 'Connecting to Sandra. AI…' });
         var base = (CFG.baseUrl || 'https://opencode.ai/zen/v1').replace(/\/$/, '');
         var useProxy = !!(CFG.proxyEndpoint && String(CFG.proxyEndpoint).trim());
@@ -739,6 +740,11 @@
             var parsed = parseQuestionBlocks(text, { includeOpen: true });
             text = parsed.cleaned;
             if (parsed.questions.length) showQuestions(parsed.questions);
+
+            // A turn that is nothing but question blocks has no visible prose.
+            // Don't let that read as an empty/failed reply: add a short line so
+            // the bubble makes sense next to the modal that just opened.
+            text = finishedReplyText(text, _turnAsked || parsed.questions.length);
 
             bubble.setDone(text);
             if (text) {
@@ -905,6 +911,7 @@
     var _pendingAnswer = null;  // answered while the reply was still streaming
     var _lastFocus = null;
     var _lastRaw = '';          // last raw assistant reply, for debugging
+    var _turnAsked = false;     // did the current turn surface any question tabs?
 
     /**
      * showQuestions(list)
@@ -937,6 +944,7 @@
             });
         });
         if (_questions.length > MAX_QUESTIONS) _questions = _questions.slice(0, MAX_QUESTIONS);
+        _turnAsked = true;
 
         renderQuestionTabs();
         renderQuestionPanels();
@@ -1289,6 +1297,15 @@
         if (!err) return 'The AI service reported an error.';
         if (typeof err === 'string') return err;
         return err.message || 'The AI service reported an error.';
+    }
+
+    /* Visible bubble text for a finished turn: the prose if there is any,
+       otherwise a short line when the turn only produced question tabs so it
+       never reads as an empty/failed reply. */
+    function finishedReplyText(cleaned, asked) {
+        if (cleaned) return cleaned;
+        if (asked) return "I've opened a few questions in the panel — answer them and I'll pick it up from there.";
+        return '';
     }
 
     /* Back-compat single-question entry point:
