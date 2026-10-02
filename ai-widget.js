@@ -139,7 +139,7 @@
         SEND = $('ai-send');
         if (!PANEL || !MSGS || !INPUT) return;
 
-        LAUNCHER.addEventListener('click', togglePanel);
+        LAUNCHER.addEventListener('click', function () { togglePanel(); });
         if (CLOSE_BTN) CLOSE_BTN.addEventListener('click', function () { togglePanel(false); });
         if (CLEAR_BTN) CLEAR_BTN.addEventListener('click', clearChat);
 
@@ -207,7 +207,7 @@
         PANEL.classList.toggle('open', STATE.open);
         LAUNCHER.classList.toggle('open', STATE.open);
         LAUNCHER.setAttribute('aria-expanded', STATE.open ? 'true' : 'false');
-        var icon = LAUNCHER.querySelector('.ai-launcher-icon i') || LAUNCHER.querySelector('.ai-launcher-icon');
+        var icon = LAUNCHER.querySelector('i');
         if (icon) {
             icon.className = STATE.open ? 'fa-solid fa-xmark' : 'fa-solid fa-sparkles';
         }
@@ -1172,6 +1172,17 @@
         if (!err) return 'The AI service reported an error.';
         if (typeof err === 'string') return err;
         return err.message || 'The AI service reported an error.';
+    }
+
+    /* Back-compat single-question entry point:
+       SandraAI.showQuestion({ question, options }) */
+    function showQuestion(opts) {
+        if (!opts) return;
+        showQuestions([{
+            label: opts.label || opts.title || '',
+            prompt: opts.question || opts.prompt || '',
+            options: opts.options || []
+        }]);
     }
 
     /* Expose the question modal globally so external code / the server can
