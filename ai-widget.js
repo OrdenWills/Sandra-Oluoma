@@ -115,6 +115,14 @@
         '- Never mention the modal, the tags, or the word "QUESTION" in your visible text; the blocks are stripped automatically.',
         '- After a completed audit, close with a block instead of a plain question, e.g. "What would you like next?" with options "Deep-dive one section", "Rewrite my headline", "Rewrite my About", "Nothing for now".',
         '- When the user answers (options or free text), treat that as their next instruction and continue normally.',
+        '',
+        'OFFERING THE 1:1 CALL — after you have delivered a real audit:',
+        '- Once you have finished a full audit, close by inviting the user to a 1:1 Brand Clarity & Profile Audit Call with Sandra, then add the tag [BOOKING] on its own line as the very last thing in your reply. That tag renders a compact booking card under your message; the user taps it to see the image and book. Never write the tag in prose or mention that you added it.',
+        '- Keep the invitation tight: two or three sentences, then a short list of what the call covers (profile teardown of headline, banner and About; positioning strategy; content direction; live Q&A).',
+        '- Never state prices, dates, availability or a booking URL in your text — the card handles the link.',
+        '- Add [BOOKING] at most once per reply, and only when you have actually delivered work in that reply. Never add it to a greeting, to a turn that is only questions, or before the audit exists.',
+        '- If the user says they are not interested, do not offer it again unless they ask.',
+        '- Never send the tag twice in a conversation without the user asking about the call again.',
     ].join('\n');
 
     /* ------------------------------------------------------------------ */
@@ -134,7 +142,12 @@
 
     var ROOT, LAUNCHER, PANEL, CLOSE_BTN, CLEAR_BTN, MSGS, SUGGESTIONS, INPUT, SEND;
     var Q_OVERLAY, Q_TABS, Q_PANELS, Q_KICKER, Q_SUBMIT, Q_SKIP, Q_DISMISS, Q_PREV, Q_NEXT;
+    var B_OVERLAY, B_CLOSE;
     var ATTACH_INPUT, ATTACH_NOTE, _pdfJsPromise = null;
+
+    var BOOKING_URL = 'https://coachli.co/sandrachukwuemeka/SV-26x7n';
+    var BOOKING_TITLE = '1:1 Brand Clarity & Profile Audit Call';
+    var BOOKING_IMAGE = 'assets/1-1.png';
 
     function $(id) { return document.getElementById(id); }
 
@@ -263,6 +276,18 @@
         Q_DISMISS = $('ai-question-dismiss');
         Q_PREV    = $('ai-question-prev');
         Q_NEXT    = $('ai-question-next');
+
+        B_OVERLAY = $('ai-booking-overlay');
+        B_CLOSE   = $('ai-booking-close');
+        if (B_CLOSE) B_CLOSE.addEventListener('click', closeBookingModal);
+        if (B_OVERLAY) B_OVERLAY.addEventListener('click', function (e) {
+            if (e.target === B_OVERLAY) closeBookingModal();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && B_OVERLAY && B_OVERLAY.classList.contains('visible')) {
+                closeBookingModal();
+            }
+        });
 
         if (Q_SUBMIT)  Q_SUBMIT.addEventListener('click', submitQuestion);
         if (Q_SKIP)    Q_SKIP.addEventListener('click', function () { dismissQuestion(true); });
@@ -741,14 +766,18 @@
             text = parsed.cleaned;
             if (parsed.questions.length) showQuestions(parsed.questions);
 
+            var book = parseBookingTag(text);
+            text = book.cleaned;
+
             // A turn that is nothing but question blocks has no visible prose.
             // Don't let that read as an empty/failed reply: add a short line so
             // the bubble makes sense next to the modal that just opened.
-            text = finishedReplyText(text, _turnAsked || parsed.questions.length);
+            text = finishedReplyText(text, _turnAsked || parsed.questions.length, book.wants);
 
             bubble.setDone(text);
+            if (book.wants) appendBookingCard(bubble.wrap);
             if (text) {
-                STATE.history.push({ role: 'assistant', content: text });
+                STATE.history.push({ role: 'assistant', content: text, booking: book.wants });
                 saveChat();
             }
             flushPendingAnswer();
@@ -1169,14 +1198,19 @@
      * never flash on screen before the block closes.
      */
     function liveText(text) {
-        text = String(text || '').replace(/\[\/?Q?U?E?S?T?I?O?N?$/i, '');
+        text = String(text || '')
+            .replace(/\[\/?Q?U?E?S?T?I?O?N?$/i, '')
+            .replace(/\[\/?B?O?O?K?I?N?G?$/i, '');
+        var cut = -1;
         var re = /\[\s*QUESTION\b[^\]]*\]/gi;
-        var last = -1;
         var m;
-        while ((m = re.exec(text)) !== null) last = m.index;
-        if (last === -1) return text;
-        if (/\[\s*\/\s*QUESTION\s*\]/i.test(text.slice(last))) return text;
-        return text.slice(0, last);
+        while ((m = re.exec(text)) !== null) {
+            if (/\[\s*\/\s*QUESTION\s*\]/i.test(text.slice(m.index))) break;
+            cut = m.index;
+        }
+        var book = text.search(/\[\s*BOOKING\b/i);
+        if (book !== -1 && (cut === -1 || book < cut)) cut = book;
+        return cut === -1 ? text : text.slice(0, cut);
     }
 
     /**
@@ -1300,12 +1334,63 @@
     }
 
     /* Visible bubble text for a finished turn: the prose if there is any,
-       otherwise a short line when the turn only produced question tabs so it
-       never reads as an empty/failed reply. */
-    function finishedReplyText(cleaned, asked) {
+       otherwise a short line when the turn only produced question tabs or a
+       booking invite, so it never reads as an empty/failed reply. */
+    function finishedReplyText(cleaned, asked, offered) {
         if (cleaned) return cleaned;
         if (asked) return "I've opened a few questions in the panel — answer them and I'll pick it up from there.";
+        if (offered) return "If you want a second pair of eyes on this, the 1:1 call is right below.";
         return '';
+    }
+
+    /* -------------------------------------------------------------- */
+    /* 1:1 Call offer — compact card under the reply, modal on tap     */
+    /* -------------------------------------------------------------- */
+
+    /**
+     * parseBookingTag(text)
+     * The model asks for the booking card by emitting a bare [BOOKING] tag on
+     * its own line at the end of a completed audit. Tolerantly matched (so
+     * "[BOOKING 1:1]" still counts) and stripped so the tag never shows.
+     */
+    function parseBookingTag(text) {
+        var s = String(text || '');
+        if (!/\[\s*BOOKING\b/i.test(s)) return { cleaned: s.trim(), wants: false };
+        var cleaned = s.replace(/\[\s*BOOKING\b[^\]]*\]/gi, '')
+            .replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
+        return { cleaned: cleaned, wants: true };
+    }
+
+    /* The rectangular card that sits under the AI's reply. Appended to the
+       bubble (not the markdown) so re-rendering the text cannot wipe it. */
+    function appendBookingCard(wrap) {
+        if (!wrap || wrap.querySelector('.ai-booking-card')) return;
+        var card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'ai-booking-card';
+        card.innerHTML =
+            '<span class="ai-booking-card-icon"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i></span>' +
+            '<span class="ai-booking-card-copy">' +
+            '<span class="ai-booking-card-title">' + esc(BOOKING_TITLE) + '</span>' +
+            '<span class="ai-booking-card-sub">Tap to see the details and book</span>' +
+            '</span>' +
+            '<i class="fa-solid fa-chevron-right ai-booking-card-chevron" aria-hidden="true"></i>';
+        card.addEventListener('click', function () { openBookingModal(); });
+        wrap.appendChild(card);
+        scrollBottom();
+    }
+
+    function openBookingModal() {
+        if (!B_OVERLAY) return;
+        B_OVERLAY.classList.add('visible');
+        B_OVERLAY.setAttribute('aria-hidden', 'false');
+        if (B_CLOSE) B_CLOSE.focus();
+    }
+
+    function closeBookingModal() {
+        if (!B_OVERLAY) return;
+        B_OVERLAY.classList.remove('visible');
+        B_OVERLAY.setAttribute('aria-hidden', 'true');
     }
 
     /* Back-compat single-question entry point:
@@ -1346,6 +1431,7 @@
                 else if (m.role === 'assistant') {
                     var b = createAssistantMessage('', {});
                     b.setDone(m.content);
+                    if (m.booking) appendBookingCard(b.wrap);
                 }
             });
             return;
