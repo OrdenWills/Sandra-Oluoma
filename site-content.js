@@ -12,9 +12,9 @@ window.SandraSiteContent = {
     "offers": [
         {
             "name": "The Unignorable LinkedIn Profile Revamp",
-            "naira": 30000,
-            "usd": "($21)",
-            "was": "₦32,000 ($23)",
+            "naira": 35000,
+            "usd": "($25)",
+            "was": "₦40,000 ($28.50)",
             "summary": "Everything working together to make your profile clear, credible, and unignorable.",
             "includes": "Strategic Headline, Complete About Section Rewrite, Custom LinkedIn Banner, and Featured Section Setup.",
             "buyUrl": "https://selar.com/17z2a1y7h5",
@@ -52,8 +52,8 @@ window.SandraSiteContent = {
         },
         {
             "name": "Featured Section Setup",
-            "naira": 7000,
-            "usd": "($5)",
+            "naira": 8000,
+            "usd": "($5.50)",
             "was": null,
             "summary": "A strategic setup for your best work, links, offers, and proof.",
             "includes": "",
@@ -62,8 +62,8 @@ window.SandraSiteContent = {
         },
         {
             "name": "Banner Design",
-            "naira": 10000,
-            "usd": "($8)",
+            "naira": 12000,
+            "usd": "($8.50)",
             "was": null,
             "summary": "A custom LinkedIn banner designed around your personal brand, positioning, and visual identity.",
             "includes": "",
