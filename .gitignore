@@ -3,3 +3,4 @@ server/.env
 server/__pycache__/
 *.pyc
 jot.txt
+docs/
