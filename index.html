@@ -645,6 +645,17 @@
 
             <div id="ai-suggestions" class="ai-suggestions"></div>
 
+            <!-- Staged attachment: loaded, waiting for the user to send -->
+            <div id="ai-attach-chip" class="ai-attach-chip" hidden>
+                <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                <span class="ai-attach-chip-name" id="ai-attach-chip-name"></span>
+                <span class="ai-attach-chip-state">Ready to send</span>
+                <button type="button" class="ai-attach-chip-remove" id="ai-attach-chip-remove"
+                    aria-label="Remove attachment" title="Remove attachment">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+
             <div class="ai-input-row">
                 <textarea id="ai-input" rows="1"
                     placeholder="Paste a LinkedIn profile URL or ask a question…"></textarea>
@@ -682,20 +693,6 @@
                         <button type="button" class="ai-question-submit" id="ai-question-submit">Submit answers</button>
                         <button type="button" class="ai-question-skip" id="ai-question-skip">Skip</button>
                     </div>
-                </div>
-            </div>
-
-            <!-- 1:1 Call Overlay (compact booking card) -->
-            <div id="ai-booking-overlay" class="ai-booking-overlay" aria-hidden="true">
-                <div class="ai-booking-modal" role="dialog" aria-modal="true" aria-labelledby="ai-booking-title">
-                    <button type="button" class="ai-booking-close" id="ai-booking-close" aria-label="Close booking details">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                    <a class="ai-booking-link" id="ai-booking-link"
-                        href="https://coachli.co/sandrachukwuemeka/SV-26x7n" target="_blank" rel="noopener noreferrer">
-                        <img class="ai-booking-image" src="assets/1-1.png" alt="" width="480" height="270">
-                        <span class="ai-booking-title" id="ai-booking-title">1:1 Brand Clarity &amp; Profile Audit Call</span>
-                    </a>
                 </div>
             </div>
 

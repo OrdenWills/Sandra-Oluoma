@@ -2562,6 +2562,7 @@ footer {
     margin-top: 14px;
     padding: 12px 14px;
     text-align: left;
+    text-decoration: none;
     border: 1px solid var(--primary-color);
     border-radius: 14px;
     background: linear-gradient(135deg, rgba(213, 141, 25, 0.14), rgba(213, 141, 25, 0.04));
@@ -2577,17 +2578,25 @@ footer {
     box-shadow: 0 6px 18px rgba(213, 141, 25, 0.25);
 }
 
-.ai-booking-card-icon {
-    flex-shrink: 0;
-    width: 38px;
-    height: 38px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+/* The graphic, showing only its left half.
+   assets/1-1.png is 1607x811 (~2:1). Fitting it to the box height while the box
+   stays one image-width wide makes the visible slice exactly the left half,
+   undistorted: contained on the vertical axis, cropped on purpose horizontally. */
+.ai-booking-card-thumb {
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
     border-radius: 10px;
-    background: var(--primary-color);
-    color: #000;
-    font-size: 1rem;
+    background: rgba(0, 0, 0, 0.28);
+}
+
+.ai-booking-card-thumb img {
+    display: block;
+    height: 100%;
+    width: auto;
+    max-width: none;
 }
 
 .ai-booking-card-copy {
@@ -2615,98 +2624,62 @@ footer {
     color: var(--primary-color);
 }
 
-/* --- 1:1 Call Overlay (image on top, title below) --- */
-.ai-booking-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 25;
+/* --- Staged attachment chip (loaded, waiting for the user to send) --- */
+.ai-attach-chip {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 18px;
-    background: rgba(0, 0, 0, 0.62);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.22s ease, visibility 0.22s;
-}
-
-.ai-booking-overlay.visible {
-    opacity: 1;
-    visibility: visible;
-}
-
-.ai-booking-modal {
-    position: relative;
-    width: 100%;
-    max-width: 340px;
-    max-height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: 10px;
-    gap: 10px;
-    background: var(--nav-bg);
+    gap: 8px;
+    margin: 0 12px 8px;
+    padding: 7px 8px 7px 10px;
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
-    transform: scale(0.94);
-    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
-}
-
-.ai-booking-overlay.visible .ai-booking-modal {
-    transform: scale(1);
-}
-
-.ai-booking-link {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    text-decoration: none;
-    color: inherit;
-}
-
-.ai-booking-image {
-    width: 100%;
-    /* keep the graphic whole and compact inside the chat panel */
-    max-height: 34vh;
-    object-fit: contain;
+    border-left: 3px solid var(--primary-color);
     border-radius: 10px;
-    background: rgba(0, 0, 0, 0.25);
-}
-
-.ai-booking-title {
-    font-family: 'Montserrat', sans-serif;
-    font-weight: 700;
-    font-size: 0.9rem;
-    line-height: 1.3;
-    text-align: center;
+    background: rgba(213, 141, 25, 0.08);
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.76rem;
     color: var(--text-main);
-    padding: 0 4px 2px;
 }
 
-.ai-booking-close {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 1;
-    width: 28px;
-    height: 28px;
+.ai-attach-chip[hidden] {
+    display: none;
+}
+
+.ai-attach-chip > i {
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.ai-attach-chip-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-attach-chip-state {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+.ai-attach-chip-remove {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--glass-border);
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.45);
-    color: var(--text-main);
-    font-size: 0.8rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.72rem;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
-.ai-booking-close:hover {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-    color: #000;
+.ai-attach-chip-remove:hover {
+    background: rgba(213, 141, 25, 0.2);
+    color: var(--text-main);
 }

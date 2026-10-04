@@ -116,11 +116,12 @@
         '- After a completed audit, close with a block instead of a plain question, e.g. "What would you like next?" with options "Deep-dive one section", "Rewrite my headline", "Rewrite my About", "Nothing for now".',
         '- When the user answers (options or free text), treat that as their next instruction and continue normally.',
         '',
-        'OFFERING THE 1:1 CALL — after you have delivered a real audit:',
-        '- Once you have finished a full audit, close by inviting the user to a 1:1 Brand Clarity & Profile Audit Call with Sandra, then add the tag [BOOKING] on its own line as the very last thing in your reply. That tag renders a compact booking card under your message; the user taps it to see the image and book. Never write the tag in prose or mention that you added it.',
-        '- Keep the invitation tight: two or three sentences, then a short list of what the call covers (profile teardown of headline, banner and About; positioning strategy; content direction; live Q&A).',
+        'OFFERING THE 1:1 CALL — MANDATORY after every delivered audit:',
+        '- Every time you deliver a scorecard, you MUST close by inviting the user to a 1:1 Brand Clarity & Profile Audit Call with Sandra, then add the tag [BOOKING] on its own line as the very last thing in your reply. This is required, not optional. Never write the tag in prose or mention that you added it.',
+        '- The tag renders a booking card under your message; the user taps it to book. Keep the invitation tight: two or three sentences, then a short list of what the call covers (profile teardown of headline, banner and About; positioning strategy; content direction; live Q&A).',
+        '- Put the invitation right after your final fix, and keep the whole audit tight enough that you always reach the tag. Do not pad the audit — depth beats length, and a truncated reply that never reaches [BOOKING] is a failed reply.',
         '- Never state prices, dates, availability or a booking URL in your text — the card handles the link.',
-        '- Add [BOOKING] at most once per reply, and only when you have actually delivered work in that reply. Never add it to a greeting, to a turn that is only questions, or before the audit exists.',
+        '- Add [BOOKING] at most once per reply, and only when you have actually delivered an audit in that reply. Never add it to a greeting, to a turn that is only questions, or before the scorecard exists.',
         '- If the user says they are not interested, do not offer it again unless they ask.',
         '- Never send the tag twice in a conversation without the user asking about the call again.',
     ].join('\n');
@@ -202,8 +203,11 @@
 
     var ROOT, LAUNCHER, PANEL, CLOSE_BTN, CLEAR_BTN, MSGS, SUGGESTIONS, INPUT, SEND;
     var Q_OVERLAY, Q_TABS, Q_PANELS, Q_KICKER, Q_SUBMIT, Q_SKIP, Q_DISMISS, Q_PREV, Q_NEXT;
-    var B_OVERLAY, B_CLOSE;
-    var ATTACH_INPUT, ATTACH_NOTE, _pdfJsPromise = null;
+    var ATTACH_INPUT, ATTACH_NOTE, ATTACH_CHIP, ATTACH_CHIP_NAME, ATTACH_CHIP_X, _pdfJsPromise = null;
+
+    /* A loaded file waits here until the user actually sends. Attaching never
+       sends on its own — the user chooses when, and may add a message. */
+    var PENDING_FILE = null;
 
     var BOOKING_URL = 'https://coachli.co/sandrachukwuemeka/SV-26x7n';
     var BOOKING_TITLE = '1:1 Brand Clarity & Profile Audit Call';
@@ -313,11 +317,20 @@
 
         ATTACH_INPUT = $('ai-file');
         ATTACH_NOTE = $('ai-attach-note');
+        ATTACH_CHIP = $('ai-attach-chip');
+        ATTACH_CHIP_NAME = $('ai-attach-chip-name');
+        ATTACH_CHIP_X = $('ai-attach-chip-remove');
         if (ATTACH_INPUT) {
             ATTACH_INPUT.addEventListener('change', function () {
                 var file = ATTACH_INPUT.files && ATTACH_INPUT.files[0];
                 ATTACH_INPUT.value = '';   // let the same file be picked again
                 handleAttachFile(file);
+            });
+        }
+        if (ATTACH_CHIP_X) {
+            ATTACH_CHIP_X.addEventListener('click', function () {
+                clearPendingFile();
+                attachNote('');
             });
         }
 
@@ -336,18 +349,6 @@
         Q_DISMISS = $('ai-question-dismiss');
         Q_PREV    = $('ai-question-prev');
         Q_NEXT    = $('ai-question-next');
-
-        B_OVERLAY = $('ai-booking-overlay');
-        B_CLOSE   = $('ai-booking-close');
-        if (B_CLOSE) B_CLOSE.addEventListener('click', closeBookingModal);
-        if (B_OVERLAY) B_OVERLAY.addEventListener('click', function (e) {
-            if (e.target === B_OVERLAY) closeBookingModal();
-        });
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && B_OVERLAY && B_OVERLAY.classList.contains('visible')) {
-                closeBookingModal();
-            }
-        });
 
         if (Q_SUBMIT)  Q_SUBMIT.addEventListener('click', submitQuestion);
         if (Q_SKIP)    Q_SKIP.addEventListener('click', function () { dismissQuestion(true); });
@@ -602,16 +603,26 @@
     function send(prefilled, displayText) {
         // Keep the user's line structure (pasted profiles are multi-line); just
         // tidy trailing spaces and collapse runs of blank lines.
-        var text = String(prefilled != null ? prefilled : INPUT.value)
+        var staged = PENDING_FILE;
+        var typed = String(prefilled != null ? prefilled : INPUT.value)
             .replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
-        if (!text || STATE.streaming) return;
+        // A staged file is enough on its own: send with no message typed.
+        if ((!typed && !staged) || STATE.streaming) return;
         INPUT.value = '';
         autoGrow();
         SUGGESTIONS.classList.add('hidden');
+        clearPendingFile();
 
-        addUserMessage(displayText || text);
-        var url = extractLinkedInUrl(text);
-        var typingNote = addStatusNote(displayText
+        // What the user sees in their own bubble: their message plus the file.
+        var label = displayText || typed;
+        if (staged) {
+            var shortText = typed.length > 80 ? typed.slice(0, 80) + '…' : typed;
+            label = (shortText ? shortText + '\n\n' : '') + '📎 ' + staged.name;
+        }
+        addUserMessage(label);
+
+        var url = extractLinkedInUrl(typed);
+        var typingNote = addStatusNote(staged
             ? '📄 Reading your profile…'
             : (url ? '🔎 Searching for your LinkedIn profile…' : '💭 Sandra. AI is thinking…'));
 
@@ -620,7 +631,10 @@
 
         setTimeout(function () {
             gatherProfile(url, function (res) {
-                var content = text;
+                var content = typed;
+                if (staged) {
+                    content = (typed ? typed + '\n\n' : '') + staged.payload;
+                }
                 if (url) {
                     if (res.status === 'profile') {
                         typingNote.textContent = '📊 Auditing your profile…';
@@ -709,6 +723,25 @@
         if (ATTACH_NOTE) ATTACH_NOTE.textContent = msg || '';
     }
 
+    /* Show/hide the "loaded, ready to send" chip in the composer. */
+    function showPendingChip(on, name) {
+        if (!ATTACH_CHIP) return;
+        ATTACH_CHIP.hidden = !on;
+        if (on && ATTACH_CHIP_NAME) ATTACH_CHIP_NAME.textContent = name || '';
+    }
+
+    function stageFile(name, payload) {
+        PENDING_FILE = { name: name, payload: payload };
+        showPendingChip(true, name);
+        attachNote('');
+        INPUT.focus();
+    }
+
+    function clearPendingFile() {
+        PENDING_FILE = null;
+        showPendingChip(false, '');
+    }
+
     function loadPdfJs() {
         if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
         if (_pdfJsPromise) return _pdfJsPromise;
@@ -775,11 +808,11 @@
         read.then(function (raw) {
             var txt = String(raw || '').replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').trim();
             if (txt.length < 40) { attachNote('Could not read any text from that file — try pasting the profile text.'); return; }
-            attachNote('');
             var clipped = txt.slice(0, 70000);
             var payload = '[LINKEDIN PROFILE — attached by the user via "Save to PDF"]\n'
                 + clipped + '\n[END PROFILE]';
-            send(payload, '📎 ' + (file.name || 'profile'));
+            // Staged, not sent: the user hits send when ready and may add a message.
+            stageFile(file.name || 'profile', payload);
         }).catch(function () {
             attachNote('Could not read that file — try pasting the profile text instead.');
         });
@@ -834,10 +867,16 @@
             // the bubble makes sense next to the modal that just opened.
             text = finishedReplyText(text, _turnAsked || parsed.questions.length, book.wants);
 
+            // The offer is not optional after a real audit. Long audits can hit
+            // the token ceiling before the model reaches its own [BOOKING] tag,
+            // so treat a delivered scorecard as an offer in its own right.
+            var offered = book.wants || (looksLikeAudit(text) && !declinedCall());
+            if (offered && !book.wants) text = finishedReplyText(text, false, true);
+
             bubble.setDone(text);
-            if (book.wants) appendBookingCard(bubble.wrap);
+            if (offered) appendBookingCard(bubble.wrap);
             if (text) {
-                STATE.history.push({ role: 'assistant', content: text, booking: book.wants });
+                STATE.history.push({ role: 'assistant', content: text, booking: offered });
                 saveChat();
             }
             flushPendingAnswer();
@@ -1421,36 +1460,70 @@
         return { cleaned: cleaned, wants: true };
     }
 
-    /* The rectangular card that sits under the AI's reply. Appended to the
-       bubble (not the markdown) so re-rendering the text cannot wipe it. */
+    /**
+     * looksLikeAudit(text)
+     * True when the reply actually delivered an audit, judged on the shape of
+     * the answer rather than on the model having emitted [BOOKING]. A long
+     * audit can exhaust the token ceiling before the model reaches its own tag,
+     * and the offer then silently never appears. Scoring it here means the card
+     * shows up whenever real work was delivered.
+     */
+    function looksLikeAudit(text) {
+        var t = String(text || '');
+        if (t.length < 200) return false;
+        var scored = /overall\s+(?:unignorability\s+)?score\s*[:\-—]?\s*\d+\s*\/\s*\d+/i.test(t)
+            || /\b\d{1,3}\s*\/\s*100\b/.test(t);
+        var fixes = /(biggest wins|top\s+5\s+fixes|quick verdict|where:|scorecard)/i.test(t);
+        return scored && fixes;
+    }
+
+    /**
+     * declinedCall()
+     * Has the user said no to the 1:1? Once they have, stop putting the card
+     * under their audits — including the looksLikeAudit() fallback, which would
+     * otherwise keep re-offering on every later audit unasked.
+     */
+    var DECLINED_CALL = /\b(not interested|no thanks|not right now|maybe later|not now|no need|don'?t want|skip (?:the|that))\b/i;
+    var ASK_CALLED_AGAIN = /\b(talk (?:to|with) sandra|book a (?:call|time|session)|schedule|1:1|one-on-one|consultation|call with sandra)\b/i;
+
+    function declinedCall() {
+        var seen = 0;
+        var tail = STATE.history.slice(-8);
+        for (var i = tail.length - 1; i >= 0; i--) {
+            var m = tail[i];
+            if (!m || m.role !== 'user' || !m.content) continue;
+            var said = String(m.content);
+            // Asking about the call again counts as re-opening it.
+            if (ASK_CALLED_AGAIN.test(said)) return false;
+            if (DECLINED_CALL.test(said)) return true;
+            if (++seen >= 3) break;    // only look at the last few turns
+        }
+        return false;
+    }
+
+    /* The rectangular card that sits under the AI's reply. It IS the link — one tap
+       goes straight to the external booking page, no second popup. Appended to
+       the bubble (not the markdown) so re-rendering the text cannot wipe it. */
     function appendBookingCard(wrap) {
         if (!wrap || wrap.querySelector('.ai-booking-card')) return;
-        var card = document.createElement('button');
-        card.type = 'button';
+        var card = document.createElement('a');
         card.className = 'ai-booking-card';
+        card.href = BOOKING_URL;
+        card.target = '_blank';
+        card.rel = 'noopener noreferrer';
+        card.setAttribute('aria-label', BOOKING_TITLE + ' — opens the booking page in a new tab');
+        // The graphic is decorative here: the title beside it is the label.
         card.innerHTML =
-            '<span class="ai-booking-card-icon"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i></span>' +
+            '<span class="ai-booking-card-thumb">' +
+            '<img src="' + BOOKING_IMAGE + '" alt="" width="92" height="46">' +
+            '</span>' +
             '<span class="ai-booking-card-copy">' +
             '<span class="ai-booking-card-title">' + esc(BOOKING_TITLE) + '</span>' +
-            '<span class="ai-booking-card-sub">Tap to see the details and book</span>' +
+            '<span class="ai-booking-card-sub">Book a time with Sandra</span>' +
             '</span>' +
-            '<i class="fa-solid fa-chevron-right ai-booking-card-chevron" aria-hidden="true"></i>';
-        card.addEventListener('click', function () { openBookingModal(); });
+            '<i class="fa-solid fa-arrow-up-right-from-square ai-booking-card-chevron" aria-hidden="true"></i>';
         wrap.appendChild(card);
         scrollBottom();
-    }
-
-    function openBookingModal() {
-        if (!B_OVERLAY) return;
-        B_OVERLAY.classList.add('visible');
-        B_OVERLAY.setAttribute('aria-hidden', 'false');
-        if (B_CLOSE) B_CLOSE.focus();
-    }
-
-    function closeBookingModal() {
-        if (!B_OVERLAY) return;
-        B_OVERLAY.classList.remove('visible');
-        B_OVERLAY.setAttribute('aria-hidden', 'true');
     }
 
     /* Back-compat single-question entry point:
