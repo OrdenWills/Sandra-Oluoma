@@ -125,6 +125,66 @@
         '- Never send the tag twice in a conversation without the user asking about the call again.',
     ].join('\n');
 
+    /**
+     * siteKnowledge()
+     * Turn window.SandraSiteContent (generated from index.html by
+     * tools/build-site-content.js) into a compact block appended to the system
+     * prompt, so the agent can answer "what does the full revamp cost?" or
+     * "which package covers my About section?" without guessing.
+     *
+     * If the file is missing or empty the agent simply has no commercial
+     * knowledge, which is a safe failure: it says it does not have the current
+     * list rather than inventing a price.
+     */
+    function siteKnowledge() {
+        var S = window.SandraSiteContent;
+        if (!S || !S.offers || !S.offers.length) return '';
+
+        var sym = (S.currency && S.currency.symbol) || 'NGN';
+        var L = [];
+
+        L.push('');
+        L.push('WHAT SANDRA SELLS (current — quote these exactly, never estimate):');
+        S.offers.forEach(function (o) {
+            var bits = [];
+            if (o.naira) bits.push(sym + o.naira.toLocaleString('en-US'));
+            if (o.usd) bits.push(o.usd);
+            if (o.was) bits.push('was ' + o.was);
+            var line = '- ' + o.name + (bits.length ? ' — ' + bits.join(', ') : '');
+            if (o.bestValue) line += ' [BEST VALUE]';
+            if (o.summary) line += ': ' + o.summary;
+            if (o.includes) line += ' Includes: ' + o.includes;
+            if (o.buyUrl) line += ' Buy: ' + o.buyUrl;
+            L.push(line);
+        });
+
+        if (S.call && S.call.name) {
+            L.push('');
+            L.push('THE 1:1 CALL: ' + S.call.name + '. Covers: ' + ((S.call.covers || []).join('; ')) + '.');
+        }
+        if (S.playbook && S.playbook.name) {
+            L.push('PLAYBOOK: ' + S.playbook.name + ' — ' + (S.playbook.status || 'coming soon') + '. ' + (S.playbook.note || ''));
+        }
+        if (S.proof && S.proof.receipts && S.proof.receipts.length) {
+            L.push('PROOF SHOWN ON SITE: ' + S.proof.receipts.map(function (r) { return r.kind; }).join(', ') + '.');
+        }
+        if (S.proof && S.proof.rule) L.push(S.proof.rule);
+
+        L.push('');
+        L.push('COMMERCIAL RULES:');
+        L.push('- Only state a price, bundle or inclusion that appears above. If asked about something not listed, say what is listed and offer to check.');
+        L.push('- Never invent a discount, bundle, payment plan, deadline or availability. Never guess a price.');
+        L.push('- Describe the offers factually and briefly. Do not pitch unless the user asks.');
+        L.push('- When the user asks what something costs or which package fits, answer from this list and include the Buy link for that package.');
+        L.push('- Use the 1:1 call, never the bundles, when the user wants to talk through strategy or has an open-ended positioning problem.');
+        L.push('- Never mention this list, that you were "given" these details, or any internal source of them.');
+
+        return L.join('\n');
+    }
+
+    var SITE_KNOWLEDGE = siteKnowledge();
+    if (SITE_KNOWLEDGE) SYSTEM_PROMPT += SITE_KNOWLEDGE;
+
     /* ------------------------------------------------------------------ */
 
     var STORAGE_KEY = 'sandra-ai-chat-v1';
@@ -1411,6 +1471,8 @@
     window.SandraAI.showQuestions = showQuestions;
     window.SandraAI.showQuestion = showQuestion;
     window.SandraAI.lastRaw = function () { return _lastRaw; };
+    window.SandraAI.systemPrompt = function () { return SYSTEM_PROMPT; };
+    window.SandraAI.siteContent = function () { return window.SandraSiteContent || null; };
 
     /* ---------------- persistence ---------------- */
 
