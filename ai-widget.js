@@ -800,12 +800,28 @@
                 fr.onerror = function () { reject(new Error('read failed')); };
                 fr.readAsText(file);
             });
+        } else if (/^image\//.test(file.type || '') || /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(name)) {
+            read = new Promise(function (resolve, reject) {
+                var fr = new FileReader();
+                fr.onload = function () { resolve(String(fr.result || '')); };
+                fr.onerror = function () { reject(new Error('read failed')); };
+                fr.readAsDataURL(file);
+            });
+            // tag so stageFile knows it's an image
+            file._isImage = true;
         } else {
             attachNote('Attach a PDF, TXT or MD file — or paste the text.');
             return;
         }
 
         read.then(function (raw) {
+            if (file._isImage) {
+                // Data URL: e.g. data:image/png;base64,...
+                var m = /^data:([^;]+);base64,(.+)$/.exec(raw || '');
+                if (!m) { attachNote('Could not read that image — try a smaller PNG/JPG.'); return; }
+                stageFile(file.name || 'image', { type: 'image', mime: m[1], b64: m[2] });
+                return;
+            }
             var txt = String(raw || '').replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').trim();
             if (txt.length < 40) { attachNote('Could not read any text from that file — try pasting the profile text.'); return; }
             var clipped = txt.slice(0, 70000);
