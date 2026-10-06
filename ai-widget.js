@@ -406,7 +406,29 @@
         clamp.className = 'ai-user-clamp';
         var body = document.createElement('div');
         body.className = 'ai-user-text';
-        body.textContent = text;
+        // text can be a string or an array (vision) — render safely
+        if (Array.isArray(text)) {
+            text.forEach(function (p) {
+                if (!p) return;
+                if (p.type === 'text') {
+                    var span = document.createElement('div');
+                    span.textContent = p.text || '';
+                    body.appendChild(span);
+                } else if (p.type === 'image_url') {
+                    var img = document.createElement('img');
+                    img.src = (p.image_url && p.image_url.url) || '';
+                    img.alt = 'attached image';
+                    img.className = 'ai-user-img';
+                    body.appendChild(img);
+                } else if (typeof p === 'string') {
+                    var s = document.createElement('div');
+                    s.textContent = p;
+                    body.appendChild(s);
+                }
+            });
+        } else {
+            body.textContent = String(text == null ? '' : text);
+        }
         clamp.appendChild(body);
         d.appendChild(clamp);
         MSGS.appendChild(d);
