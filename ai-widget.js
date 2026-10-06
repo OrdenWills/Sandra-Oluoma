@@ -633,7 +633,16 @@
             gatherProfile(url, function (res) {
                 var content = typed;
                 if (staged) {
-                    content = (typed ? typed + '\n\n' : '') + staged.payload;
+                    if (staged.type === 'image') {
+                        // Vision: attach image to the user turn (OpenAI/Gemini compatible parts)
+                        content = [];
+                        if (typed) {
+                            content.push({ type: 'text', text: typed });
+                        }
+                        content.push({ type: 'image_url', image_url: { url: 'data:' + staged.mime + ';base64,' + staged.b64 } });
+                    } else {
+                        content = (typed ? typed + '\n\n' : '') + staged.payload;
+                    }
                 }
                 if (url) {
                     if (res.status === 'profile') {
@@ -841,7 +850,14 @@
         var tail = STATE.history.slice(-20);
         for (var i = 0; i < tail.length; i++) {
             var m = tail[i];
-            if (m && m.content) msgs.push({ role: m.role === 'user' ? 'user' : 'assistant', content: String(m.content) });
+            if (m && m.content) {
+                // Support both string content and array (vision) from history.
+                if (Array.isArray(m.content)) {
+                    msgs.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content });
+                } else if (m.content) {
+                    msgs.push({ role: m.role === 'user' ? 'user' : 'assistant', content: String(m.content) });
+                }
+            }
         }
         return msgs;
     }
