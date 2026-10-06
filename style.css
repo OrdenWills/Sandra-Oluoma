@@ -2141,6 +2141,19 @@ footer {
     display: block;
 }
 
+/* Inline image previews in user messages */
+.ai-user-img {
+    display: block;
+    max-width: 220px;
+    max-height: 160px;
+    width: 100%;
+    height: auto;
+    margin-top: 8px;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border);
+    object-fit: contain;
+}
+
 
 /* --- Responsive (mobile bottom nav sits at 0) --- */
 @media screen and (max-width: 768px) {

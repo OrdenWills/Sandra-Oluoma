@@ -635,11 +635,19 @@
         SUGGESTIONS.classList.add('hidden');
         clearPendingFile();
 
-        // What the user sees in their own bubble: their message plus the file.
-        var label = displayText || typed;
-        if (staged) {
-            var shortText = typed.length > 80 ? typed.slice(0, 80) + '…' : typed;
-            label = (shortText ? shortText + '\n\n' : '') + '📎 ' + staged.name;
+        // What the user sees in their own bubble: render a small preview if it's an image
+        var label;
+        if (staged && staged.type === 'image') {
+            var parts = [];
+            if (typed) parts.push({ type: 'text', text: typed });
+            parts.push({ type: 'image_url', image_url: { url: 'data:' + staged.mime + ';base64,' + staged.b64 } });
+            label = parts;
+        } else {
+            label = displayText || typed;
+            if (staged) {
+                var shortText = typed.length > 80 ? typed.slice(0, 80) + '…' : typed;
+                label = (shortText ? shortText + '\n\n' : '') + '📎 ' + staged.name;
+            }
         }
         addUserMessage(label);
 
