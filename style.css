@@ -152,7 +152,9 @@ a {
 }
 
 /* --- Buttons --- */
-.btn-main {
+.btn-main,
+.btn-main:visited,
+.btn-main:focus {
     background-color: var(--primary-color);
     color: #000;
     padding: 10px 25px;
@@ -274,6 +276,14 @@ a {
 .nav-links li a:hover,
 .nav-links li a.active {
     color: var(--primary-color);
+}
+
+.nav-links li a.btn-main,
+.nav-links li a.btn-main:visited,
+.nav-links li a.btn-main:focus,
+.nav-links li a.btn-main:hover,
+.nav-links li a.btn-main.active {
+    color: #000;
 }
 
 .burger {
