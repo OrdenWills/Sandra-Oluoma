@@ -758,6 +758,11 @@ a {
     --orbit-y: 0.62;
 }
 
+.graphic-card[data-graphic="featured"] {
+    --orbit-x: 0.52;
+    --orbit-y: 0.2;
+}
+
 .graphic-card:hover,
 .graphic-card:focus-within,
 .graphic-card.is-open {
@@ -802,7 +807,7 @@ a {
 }
 
 .graphic-card[data-graphic="featured"] .graphic-sample {
-    width: 54%;
+    width: 50%;
     aspect-ratio: 4 / 5;
 }
 
