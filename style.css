@@ -704,6 +704,194 @@ a {
     display: block;
 }
 
+/* --- Graphics Showcase (Proof of Work) --- */
+.graphics-showcase {
+    margin-top: 4.5rem;
+}
+
+.graphics-showcase-header {
+    text-align: center;
+    max-width: 680px;
+    margin: 0 auto 4rem;
+}
+
+.graphics-eyebrow {
+    display: inline-block;
+    color: var(--primary-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+}
+
+.graphics-showcase-header h3 {
+    font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+    margin-bottom: 0.55rem;
+}
+
+.graphics-subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.graphics-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+}
+
+.graphic-card {
+    --orbit-x: 0.5;
+    --orbit-y: 0.45;
+    position: relative;
+    flex: 1 1 320px;
+    max-width: 460px;
+    border-radius: 16px;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.graphic-card[data-graphic="banner"] {
+    --orbit-x: 0.55;
+    --orbit-y: 0.62;
+}
+
+.graphic-card:hover,
+.graphic-card:focus-within,
+.graphic-card.is-open {
+    z-index: 6;
+}
+
+.graphic-card:focus-visible .graphic-panel {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 3px;
+}
+
+.graphic-samples {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.graphic-sample {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 72%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-color);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55) rotate(0deg);
+    transition:
+        transform 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.45s ease;
+    transition-delay: var(--delay, 0ms);
+    will-change: transform, opacity;
+}
+
+.graphic-card[data-graphic="banner"] .graphic-sample {
+    width: 84%;
+    aspect-ratio: 4 / 1;
+}
+
+.graphic-card[data-graphic="featured"] .graphic-sample {
+    width: 54%;
+    aspect-ratio: 4 / 5;
+}
+
+.graphic-card[data-graphic="profile"] .graphic-sample {
+    width: 46%;
+    aspect-ratio: 1 / 1;
+}
+
+.graphic-card:hover .graphic-sample,
+.graphic-card:focus-within .graphic-sample,
+.graphic-card.is-open .graphic-sample {
+    opacity: 1;
+    transform:
+        translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.92) rotate(var(--rot, 0deg));
+}
+
+.graphic-panel {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.6rem;
+    background: linear-gradient(160deg, rgba(48, 33, 16, 0.94), rgba(48, 33, 16, 0.86));
+}
+
+body.light-mode .graphic-panel {
+    background: linear-gradient(160deg, rgba(255, 244, 217, 0.96), rgba(255, 244, 217, 0.9));
+}
+
+.graphic-kicker {
+    color: var(--primary-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+}
+
+.graphic-price {
+    margin-bottom: 0.6rem;
+}
+
+.graphic-price .amount {
+    font-size: 2rem;
+}
+
+.graphic-description {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    text-align: left;
+    margin-bottom: 1rem;
+    flex: 1;
+}
+
+.graphic-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    margin-bottom: 0.85rem;
+}
+
+.graphic-hint i {
+    color: var(--primary-color);
+}
+
+.graphic-panel .btn-main {
+    display: block;
+    text-align: center;
+}
+
+@media screen and (max-width: 768px) {
+    .graphic-card[data-graphic="banner"] {
+        --orbit-x: 0.42;
+        --orbit-y: 0.55;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .graphic-sample {
+        transition-duration: 0.01ms;
+        transition-delay: 0ms;
+    }
+}
+
 /* --- Results Section --- */
 .results-section {
     padding: 4rem 5%;
