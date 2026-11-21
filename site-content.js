@@ -16,7 +16,7 @@ window.SandraSiteContent = {
             "usd": "($25)",
             "was": "₦40,000 ($28.50)",
             "summary": "Everything working together to make your profile clear, credible, and unignorable.",
-            "includes": "Strategic Headline, Complete About Section Rewrite, Custom LinkedIn Banner, and Featured Section Setup.",
+            "includes": "Strategic Headline, Complete About Section Rewrite, 2 Featured Sections, 1 Banner, and 1 Profile Picture.",
             "buyUrl": "https://selar.com/17z2a1y7h5",
             "bestValue": true
         },
