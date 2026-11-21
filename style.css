@@ -763,8 +763,9 @@ a {
 
 /* --- Pricing Samples --- */
 .graphic-card {
-    --orbit-x: 0.5;
-    --orbit-y: 0.45;
+    --orbit-x: 0.68;
+    --orbit-y: 0.54;
+    --splash-shift: 0px;
     position: relative;
     border-radius: 16px;
     outline: none;
@@ -772,18 +773,18 @@ a {
 }
 
 .graphic-card[data-graphic="banner"] {
-    --orbit-x: 0.4;
-    --orbit-y: 0.62;
+    --orbit-x: 0.6;
+    --orbit-y: 0.68;
 }
 
 .graphic-card[data-graphic="featured"] {
-    --orbit-x: 0.52;
-    --orbit-y: 0.2;
+    --orbit-x: 0.7;
+    --orbit-y: 0.28;
 }
 
 .graphic-card[data-graphic="profile"] {
-    --orbit-x: 0.5;
-    --orbit-y: 0.35;
+    --orbit-x: 0.68;
+    --orbit-y: 0.46;
 }
 
 .graphic-card:focus-visible .graphic-panel {
@@ -837,7 +838,7 @@ a {
     .graphic-card:hover .graphic-sample {
         opacity: 1;
         transform:
-            translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.92) rotate(var(--rot, 0deg));
+            translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px) + var(--splash-shift, 0px))) scale(0.92) rotate(var(--rot, 0deg));
     }
 }
 
@@ -845,7 +846,7 @@ a {
 .graphic-card.is-open .graphic-sample {
     opacity: 1;
     transform:
-        translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.92) rotate(var(--rot, 0deg));
+        translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px) + var(--splash-shift, 0px))) scale(0.92) rotate(var(--rot, 0deg));
 }
 
 .graphic-panel {
@@ -929,9 +930,22 @@ body.light-mode .graphic-panel {
         margin-top: 1rem;
     }
 
+    .graphic-card {
+        --orbit-x: 0.56;
+        --orbit-y: 0.58;
+        --splash-shift: 36px;
+    }
+
     .graphic-card[data-graphic="banner"] {
-        --orbit-x: 0.35;
-        --orbit-y: 0.55;
+        --orbit-x: 0.46;
+        --orbit-y: 0.64;
+        --splash-shift: 46px;
+    }
+
+    .graphic-card[data-graphic="featured"] {
+        --orbit-x: 0.58;
+        --orbit-y: 0.34;
+        --splash-shift: 40px;
     }
 }
 
