@@ -59,16 +59,16 @@ function attr(s, name) {
     return m ? m[1] : '';
 }
 
-/* --- bundles: every .pricing-card inside #pricing ------------------------ */
+/* --- bundles: every package card inside #pricing ------------------------ */
 const pricing = section('pricing');
-const cards = pricing.match(/<div class="pricing-card[\s\S]*?(?=<div class="pricing-card|<\/div>\s*<\/div>\s*<\/section>)/g) || [];
+const cards = pricing.match(/<article class="graphic-card[\s\S]*?(?=<article class="graphic-card|<\/div>\s*<\/div>\s*<\/section>)/g) || [];
 
 const offers = [];
 for (const card of cards) {
-    const name = text((/<h3>([\s\S]*?)<\/h3>/i.exec(card) || [])[1]);
+    const name = text((/<span class="graphic-kicker"[^>]*>([\s\S]*?)<\/span>/i.exec(card) || [])[1]);
     if (!name) continue;
 
-    const priceBlock = (/<div class="price"[^>]*>([\s\S]*?)<\/div>/i.exec(card) || [])[1] || '';
+    const priceBlock = (/<div class="graphic-price"[^>]*>([\s\S]*?)<\/div>/i.exec(card) || [])[1] || '';
     // inner text of the first <span class="X">...</span> in the price block
     const priceSpan = (cls) => {
         const m = new RegExp('<span class="' + cls + '"[^>]*>([\\s\\S]*?)</span>', 'i').exec(priceBlock);
@@ -78,8 +78,7 @@ for (const card of cards) {
     const was = priceSpan('original-price');
     const amount = Number((priceSpan('amount').replace(/[^\d]/g, '') || '0'));
 
-    // the bestseller card uses <div class="description">, others <p class="description">
-    const desc = text((/<(?:p|div) class="description"[^>]*>([\s\S]*?)<\/(?:p|div)>/i.exec(card) || [])[1]);
+    const desc = text((/<p class="graphic-description"[^>]*>([\s\S]*?)<\/p>/i.exec(card) || [])[1]);
     const includes = text((/<div class="tip-tooltip">([\s\S]*?)<\/div>/i.exec(card) || [])[1])
         .replace(/^Includes:\s*/i, '');
     const href = attr((/<a[^>]*class="btn-main"[^>]*>/i.exec(card) || [])[0], 'href');

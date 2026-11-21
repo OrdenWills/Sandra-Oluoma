@@ -832,18 +832,9 @@ body.light-mode .graphic-panel {
     flex: 1;
 }
 
-.graphic-hint {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.45rem;
-    color: var(--text-muted);
-    font-size: 0.76rem;
-    margin-bottom: 0.85rem;
-}
-
-.graphic-hint i {
-    color: var(--primary-color);
+.graphic-card[data-graphic="revamp"] .graphic-panel {
+    border-color: var(--primary-color);
+    overflow: visible;
 }
 
 .graphic-panel .btn-main {
