@@ -825,7 +825,7 @@ a {
 }
 
 .graphic-card[data-graphic="featured"] .graphic-sample {
-    width: 72%;
+    width: 44%;
     aspect-ratio: 16 / 9;
     object-fit: contain;
 }
