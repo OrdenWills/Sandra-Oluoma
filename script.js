@@ -270,6 +270,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function closeGraphicCards(except) {
+        graphicCards.forEach(card => {
+            if (card !== except) card.classList.remove('is-open');
+        });
+    }
+
+    function toggleGraphicCard(card) {
+        const shouldOpen = !card.classList.contains('is-open');
+        closeGraphicCards(card);
+        card.classList.toggle('is-open', shouldOpen);
+    }
+
     async function initGraphicShowcase() {
         for (const card of graphicCards) {
             const layer = card.querySelector('.graphic-samples');
@@ -305,18 +317,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             card.addEventListener('click', event => {
-                if (event.target.closest('a')) return;
-                card.classList.toggle('is-open');
+                if (event.target.closest('a, .tip-icon')) return;
+                toggleGraphicCard(card);
             });
 
             card.addEventListener('keydown', event => {
                 if (event.target !== card) return;
                 if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
-                    card.classList.toggle('is-open');
+                    toggleGraphicCard(card);
                 }
             });
         }
+
+        document.addEventListener('click', event => {
+            if (!event.target.closest('.graphic-card')) closeGraphicCards();
+        });
     }
 
     initGraphicShowcase();
