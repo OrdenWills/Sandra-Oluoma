@@ -704,44 +704,7 @@ a {
     display: block;
 }
 
-/* --- Graphics Showcase (Proof of Work) --- */
-.graphics-showcase {
-    margin-top: 4.5rem;
-}
-
-.graphics-showcase-header {
-    text-align: center;
-    max-width: 680px;
-    margin: 0 auto 4rem;
-}
-
-.graphics-eyebrow {
-    display: inline-block;
-    color: var(--primary-color);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 0.6rem;
-}
-
-.graphics-showcase-header h3 {
-    font-size: clamp(1.4rem, 2.4vw, 1.9rem);
-    margin-bottom: 0.55rem;
-}
-
-.graphics-subtitle {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-}
-
-.graphics-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 2rem;
-}
-
+/* --- Pricing Samples --- */
 .graphic-card {
     --orbit-x: 0.5;
     --orbit-y: 0.45;
