@@ -69,16 +69,6 @@ window.SandraSiteContent = {
             "includes": "",
             "buyUrl": "https://selar.com/y58jt88878",
             "bestValue": false
-        },
-        {
-            "name": "Profile Image",
-            "naira": 20000,
-            "usd": "($14)",
-            "was": null,
-            "summary": "A clean, on-brand profile image edit that makes your photo feel as intentional as the rest of your profile.",
-            "includes": "",
-            "buyUrl": "https://www.linkedin.com/in/sandra-chukwuemeka-oluoma/",
-            "bestValue": false
         }
     ],
     "proof": {
