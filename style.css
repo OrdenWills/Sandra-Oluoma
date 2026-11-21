@@ -910,8 +910,8 @@ body.light-mode .graphic-panel {
     }
 
     .pricing-sticky-stage .section-header {
-        margin-bottom: 1.6rem;
-        transform: translateY(-8px);
+        margin-bottom: 2rem;
+        transform: translateY(-22px);
     }
 
     .pricing-sticky-stage .section-header h2 {
@@ -962,6 +962,13 @@ body.light-mode .graphic-panel {
 
     .pricing-deck-controls {
         margin-top: 0.75rem;
+    }
+}
+
+@media screen and (max-width: 768px) and (max-height: 680px) {
+    .pricing-sticky-stage .section-header {
+        margin-bottom: 2rem;
+        transform: translateY(-22px);
     }
 }
 
