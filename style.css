@@ -554,7 +554,7 @@ a {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 84px 0 24px;
+    padding: 96px 0 28px;
 }
 
 .pricing-stage-inner {
@@ -566,8 +566,9 @@ a {
 }
 
 .pricing-sticky-stage .section-header {
-    margin-bottom: 1.75rem;
+    margin-bottom: 2.75rem;
     text-align: center;
+    transform: translateY(-14px);
 }
 
 .pricing-deck {
@@ -903,11 +904,12 @@ body.light-mode .graphic-panel {
     }
 
     .pricing-sticky-stage {
-        padding: 16px 0 92px;
+        padding: 24px 0 96px;
     }
 
     .pricing-sticky-stage .section-header {
-        margin-bottom: 1.1rem;
+        margin-bottom: 1.6rem;
+        transform: translateY(-8px);
     }
 
     .pricing-sticky-stage .section-header h2 {
@@ -935,7 +937,8 @@ body.light-mode .graphic-panel {
 
 @media screen and (max-height: 680px) {
     .pricing-sticky-stage .section-header {
-        margin-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+        transform: translateY(-10px);
     }
 
     .graphic-panel {
