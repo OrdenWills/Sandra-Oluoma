@@ -54,7 +54,7 @@ body.light-mode {
 }
 
 html {
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 /* Prevent animations on page load */
@@ -66,7 +66,7 @@ body {
     background-color: var(--bg-color);
     background-image: var(--bg-gradient);
     color: var(--text-main);
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 h1,
@@ -534,38 +534,129 @@ a {
     color: var(--text-main);
 }
 
-/* --- Pricing Section --- */
+/* --- Pricing Section (Sticky Stacked Card Deck) --- */
 .pricing-section {
-    padding: 4rem 5%;
+    padding: 0 5%;
+    position: relative;
 }
 
-.pricing-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-    gap: 2rem;
-    align-items: start;
+.pricing-scroll-track {
+    --deck-count: 6;
+    --deck-step: 46vh;
+    position: relative;
+    height: calc(100vh + (var(--deck-count) - 1) * var(--deck-step));
 }
 
-.pricing-card {
-    padding: 1.5rem;
+.pricing-sticky-stage {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 84px 0 24px;
+}
+
+.pricing-stage-inner {
+    width: 100%;
     display: flex;
     flex-direction: column;
-    overflow: visible;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    align-items: center;
+    justify-content: center;
 }
 
-.pricing-card:hover {
-    transform: translateY(-8px);
-    border-color: var(--primary-color);
+.pricing-sticky-stage .section-header {
+    margin-bottom: 1.75rem;
+    text-align: center;
 }
 
-.pricing-card.best-value {
-    border-color: var(--primary-color);
+.pricing-deck {
+    display: grid;
+    place-items: stretch center;
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
     position: relative;
+}
+
+.pricing-deck .graphic-card {
+    grid-area: 1 / 1;
+    width: 100%;
+    max-width: 460px;
+    will-change: transform, opacity;
+    transform-origin: center top;
+}
+
+/* Deck controls (dots, counter, prev/next) */
+.pricing-deck-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 1.4rem;
+    position: relative;
+    z-index: 5;
+}
+
+.deck-nav-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    color: var(--primary-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: background-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
+}
+
+.deck-nav-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: #000;
+    border-color: var(--primary-color);
+}
+
+.deck-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.deck-dots {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.deck-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    border: 1px solid var(--primary-color);
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    transition: width 0.25s ease, background-color 0.25s ease;
+}
+
+.deck-dot.active {
+    width: 22px;
+    background: var(--primary-color);
+}
+
+.deck-counter {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    min-width: 2.5rem;
+    text-align: center;
 }
 
 .best-value-badge {
     display: inline-block;
+    align-self: flex-start;
     background: var(--primary-color);
     color: #000;
     padding: 4px 16px;
@@ -573,20 +664,7 @@ a {
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
-    margin-bottom: 1rem;
-}
-
-.pricing-card h3 {
-    font-size: 1.2rem;
-    margin-bottom: 0.75rem;
-    text-align: center;
-}
-
-.price {
-    text-align: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--glass-border);
+    margin-bottom: 0.85rem;
 }
 
 .currency {
@@ -612,37 +690,19 @@ a {
     font-size: 0.9rem;
     color: var(--text-muted);
     text-decoration: line-through;
-    margin-top: 0.5rem;
-}
-
-.description {
-    color: var(--text-muted);
-    text-align: center;
-    margin-bottom: 1.25rem;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    flex: 1;
-}
-
-.includes {
-    color: var(--text-muted);
-    text-align: center;
-    font-size: 0.85rem;
-    line-height: 1.5;
-    margin-bottom: 1.25rem;
-    font-style: italic;
+    margin-top: 0.35rem;
 }
 
 .bestseller-row {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 1.25rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 1.1rem;
     flex: 1;
 }
 
-.bestseller-row .description {
+.bestseller-row .graphic-description {
     margin-bottom: 0;
 }
 
@@ -655,6 +715,7 @@ a {
     color: var(--primary-color);
     font-size: 1.1rem;
     flex-shrink: 0;
+    margin-top: 2px;
 }
 
 .tip-tooltip {
@@ -699,18 +760,11 @@ a {
     visibility: visible;
 }
 
-.pricing-card .btn-main {
-    text-align: center;
-    display: block;
-}
-
 /* --- Pricing Samples --- */
 .graphic-card {
     --orbit-x: 0.5;
     --orbit-y: 0.45;
     position: relative;
-    flex: 1 1 320px;
-    max-width: 460px;
     border-radius: 16px;
     outline: none;
     -webkit-tap-highlight-color: transparent;
@@ -729,12 +783,6 @@ a {
 .graphic-card[data-graphic="profile"] {
     --orbit-x: 0.5;
     --orbit-y: 0.35;
-}
-
-.graphic-card:hover,
-.graphic-card:focus-visible,
-.graphic-card.is-open {
-    z-index: 6;
 }
 
 .graphic-card:focus-visible .graphic-panel {
@@ -806,11 +854,11 @@ a {
     flex-direction: column;
     height: 100%;
     padding: 1.6rem;
-    background: linear-gradient(160deg, rgba(48, 33, 16, 0.94), rgba(48, 33, 16, 0.86));
+    background: linear-gradient(160deg, rgba(48, 33, 16, 0.98), rgba(48, 33, 16, 0.94));
 }
 
 body.light-mode .graphic-panel {
-    background: linear-gradient(160deg, rgba(255, 244, 217, 0.96), rgba(255, 244, 217, 0.9));
+    background: linear-gradient(160deg, rgba(255, 244, 217, 0.98), rgba(255, 244, 217, 0.94));
 }
 
 .graphic-kicker {
@@ -850,9 +898,52 @@ body.light-mode .graphic-panel {
 }
 
 @media screen and (max-width: 768px) {
+    .pricing-scroll-track {
+        --deck-step: 42vh;
+    }
+
+    .pricing-sticky-stage {
+        padding: 16px 0 92px;
+    }
+
+    .pricing-sticky-stage .section-header {
+        margin-bottom: 1.1rem;
+    }
+
+    .pricing-sticky-stage .section-header h2 {
+        font-size: 1.65rem;
+        margin-bottom: 0.45rem;
+    }
+
+    .pricing-sticky-stage .section-subtitle {
+        font-size: 0.88rem;
+    }
+
+    .graphic-panel {
+        padding: 1.25rem;
+    }
+
+    .pricing-deck-controls {
+        margin-top: 1rem;
+    }
+
     .graphic-card[data-graphic="banner"] {
         --orbit-x: 0.35;
         --orbit-y: 0.55;
+    }
+}
+
+@media screen and (max-height: 680px) {
+    .pricing-sticky-stage .section-header {
+        margin-bottom: 0.75rem;
+    }
+
+    .graphic-panel {
+        padding: 1.15rem;
+    }
+
+    .pricing-deck-controls {
+        margin-top: 0.75rem;
     }
 }
 

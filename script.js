@@ -335,7 +335,138 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- PRICING STACKED DECK SCROLL LOGIC ---
+    function initPricingDeck() {
+        const track = document.getElementById('pricing-track');
+        const deck = document.getElementById('pricing-deck');
+        if (!track || !deck) return;
+
+        const cards = Array.from(deck.querySelectorAll('.graphic-card'));
+        const total = cards.length;
+        if (!total) return;
+
+        const prevBtn = document.getElementById('deck-prev');
+        const nextBtn = document.getElementById('deck-next');
+        const dotsWrap = document.getElementById('deck-dots');
+        const counter = document.getElementById('deck-counter');
+
+        const ENTRY_PAD = 0.05;
+        const EXIT_PAD = 0.05;
+        const DWELL = 0.18;
+
+        let activeIndex = -1;
+        let ticking = false;
+
+        track.style.setProperty('--deck-count', total);
+
+        if (dotsWrap) {
+            cards.forEach((card, index) => {
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.className = 'deck-dot';
+                dot.setAttribute('aria-label', `Go to pricing card ${index + 1}`);
+                dot.addEventListener('click', () => scrollToCard(index));
+                dotsWrap.appendChild(dot);
+            });
+        }
+
+        const dots = dotsWrap ? Array.from(dotsWrap.children) : [];
+
+        const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+        function getStep() {
+            const raw = getComputedStyle(track).getPropertyValue('--deck-step').trim();
+            if (raw.endsWith('vh')) {
+                return window.innerHeight * parseFloat(raw) / 100;
+            }
+            const parsed = parseFloat(raw);
+            return Number.isFinite(parsed) ? parsed : window.innerHeight * 0.46;
+        }
+
+        function scrollToCard(index) {
+            const target = clamp(index, 0, total - 1);
+            const trackTop = window.scrollY + track.getBoundingClientRect().top;
+            window.scrollTo({
+                top: trackTop + getStep() * target,
+                behavior: 'smooth'
+            });
+        }
+
+        function setActive(index) {
+            if (index === activeIndex) return;
+            activeIndex = index;
+            closeGraphicCards();
+            dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+            if (counter) {
+                counter.textContent = `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
+            }
+            if (prevBtn) prevBtn.disabled = index === 0;
+            if (nextBtn) nextBtn.disabled = index === total - 1;
+        }
+
+        function render() {
+            ticking = false;
+
+            const rect = track.getBoundingClientRect();
+            const scrollable = track.offsetHeight - window.innerHeight;
+            if (scrollable <= 0) return;
+
+            const progress = clamp(-rect.top / scrollable, 0, 1);
+            const position = progress * (total - 1);
+            const segment = Math.min(Math.floor(position), total - 2);
+            const local = clamp(position - segment, 0, 1);
+
+            const transitionStart = DWELL + ENTRY_PAD;
+            const transitionEnd = 1 - DWELL - EXIT_PAD;
+            const t = clamp((local - transitionStart) / (transitionEnd - transitionStart), 0, 1);
+
+            cards.forEach((card, index) => {
+                let y = 100;
+                let opacity = 0;
+                let scale = 0.96;
+                let z = 1;
+
+                if (index === segment) {
+                    y = -t * 100;
+                    opacity = 1 - t;
+                    scale = 1 - t * 0.04;
+                    z = 2;
+                } else if (index === segment + 1) {
+                    y = (1 - t) * 100;
+                    opacity = t;
+                    scale = 0.96 + t * 0.04;
+                    z = 3;
+                } else if (index < segment) {
+                    y = -100;
+                }
+
+                card.style.transform = `translate3d(0, ${y}%, 0) scale(${scale})`;
+                card.style.opacity = opacity;
+                card.style.zIndex = z;
+                card.style.pointerEvents = opacity > 0.5 ? 'auto' : 'none';
+                card.setAttribute('aria-hidden', opacity < 0.5 ? 'true' : 'false');
+            });
+
+            setActive(t < 0.5 ? segment : Math.min(segment + 1, total - 1));
+        }
+
+        function onScroll() {
+            if (!ticking) {
+                ticking = true;
+                requestAnimationFrame(render);
+            }
+        }
+
+        if (prevBtn) prevBtn.addEventListener('click', () => scrollToCard(activeIndex - 1));
+        if (nextBtn) nextBtn.addEventListener('click', () => scrollToCard(activeIndex + 1));
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+        render();
+    }
+
     initGraphicShowcase();
+    initPricingDeck();
 
     window.addEventListener('resize', () => {
         graphicCards.forEach(positionSamples);
