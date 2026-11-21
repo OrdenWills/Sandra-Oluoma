@@ -778,7 +778,7 @@ a {
 }
 
 .graphic-card[data-graphic="featured"] {
-    --orbit-x: 0.7;
+    --orbit-x: 0.92;
     --orbit-y: 0.28;
 }
 
@@ -825,8 +825,9 @@ a {
 }
 
 .graphic-card[data-graphic="featured"] .graphic-sample {
-    width: 50%;
-    aspect-ratio: 4 / 5;
+    width: 72%;
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
 }
 
 .graphic-card[data-graphic="profile"] .graphic-sample {
@@ -943,7 +944,7 @@ body.light-mode .graphic-panel {
     }
 
     .graphic-card[data-graphic="featured"] {
-        --orbit-x: 0.58;
+        --orbit-x: 0.68;
         --orbit-y: 0.34;
         --splash-shift: 40px;
     }
