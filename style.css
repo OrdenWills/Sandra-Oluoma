@@ -910,8 +910,8 @@ body.light-mode .graphic-panel {
     }
 
     .pricing-sticky-stage .section-header {
-        margin-bottom: 2rem;
-        transform: translateY(-22px);
+        margin-bottom: 2.4rem;
+        transform: translateY(-38px);
     }
 
     .pricing-sticky-stage .section-header h2 {
@@ -945,8 +945,8 @@ body.light-mode .graphic-panel {
 
     .graphic-card[data-graphic="featured"] {
         --orbit-x: 0.5;
-        --orbit-y: 0.62;
-        --splash-shift: 40px;
+        --orbit-y: 0.66;
+        --splash-shift: -10px;
     }
 }
 
@@ -967,8 +967,8 @@ body.light-mode .graphic-panel {
 
 @media screen and (max-width: 768px) and (max-height: 680px) {
     .pricing-sticky-stage .section-header {
-        margin-bottom: 2rem;
-        transform: translateY(-22px);
+        margin-bottom: 2.4rem;
+        transform: translateY(-38px);
     }
 }
 
